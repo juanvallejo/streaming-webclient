@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+	<meta charset="utf-8" />
+	<title>FlickTrack</title>
+	<link rel="stylesheet" href="/static/reset.css" />
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<style>
+@import url('https://fonts.googleapis.com/css?family=Questrial');
+#overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,0.7);
+	z-index: 1;
+}
+#out {
+	cursor: pointer;
+}
+#banner-container {
+	background: rgba(0,0,0,0.6);
+	border-bottom: 1px solid rgba(0,0,0,0.6);
+	display: none;
+	font-size: 0.9em;
+	height: 50px;
+	position: absolute;
+	z-index: 2;
+}
+.middle-container {
+	display: table;
+}
+.full-size {
+	width: 100%;
+	height: 100%;
+}
+.full-size-hor {
+	width: 100%;
+}
+.middle {
+	display: table-cell;
+	vertical-align: middle;
+}
+.text-hl-name {
+	color: rgba(205,55,0, 0.8)
+}
+.text-center {
+	text-align: center;
+}
+.text-white {
+	color: rgba(255,255,255, 0.8);
+}
+body {
+	font: 300 16px 'Questrial';
+	background: black;
+}
+video {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+}
+</style>
+</head>
+<body>
+<div id="overlay" class="middle-container">
+	<div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
+</div>
+<div id="banner-container" class="full-size-hor middle-container">
+	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
+</div>
+<script>
+var DEFAULT_BANNER_TIMEOUT = 4500;
+var DEFAULT_OVERLAY_TIMEOUT = 5000;
+
+var overlay = document.getElementById("overlay");
+var out = document.getElementById("out");
+var banner = document.getElementById("banner");
+
+var socket = io.connect(window.location.origin);
+var initVideo = false;
+var canStartStream = false;
+var alertShown = false;
+var video = null;
+var savedTimer = null;
+var connectionLost = false;
+
+socket.on('connect', function() {
+	if(savedTimer) {
+		socket.emit('request_beginstream', {
+			timer: savedTimer
+		});
+	}
+	if(connectionLost) {
+		connectionLost = false;
+		showBanner('Connection reestablished. Resuming stream.');
+	}
+});
+
+socket.on('playbackstatus', function(data) {
+	console.log('received playback status', data);
+	if(!initVideo) {
+		initVideo = true;
+		initVideoObj(window.location);
+	}
+
+	handlePlaybackStatus(data.playback);
+});
+
+socket.on('beginstream', function(data) {
+	video.currentTime = data.timer;
+	video.play();
+	$(overlay).hide();
+	canStartStream = false;
+});
+
+socket.on('streamsync', function(data) {
+	console.log('received streamsync command', data);
+	if(Math.abs(parseInt(data.timer) - parseInt(video.currentTime)) > 10) {
+		showBanner('Video stream lag detected. Syncing your stream.');
+	}
+
+	video.currentTime = data.timer;
+	video.play();
+});
+
+socket.on('info_clientjoined', function(data) {
+	console.log('> client', data.id, 'has joined the stream.');
+	showBanner('client <span class="text-hl-name">' + data.id + '</span> has joined the stream.');
+});
+
+socket.on('info_clientleft', function(data) {
+	showBanner('client <span class="text-hl-name">' + data.id + '</span> has left the stream.');
+});
+
+socket.on('disconnect', function() {
+	showBanner('Connection lost, please wait - attempting to reestablish.', true);
+	savedTimer = video.currentTime;
+	video.pause();
+	canStartStream = false;
+	connectionLost = true;
+
+	$(overlay).fadeIn();
+});
+
+out.addEventListener('click', function() {
+	if(canStartStream) {
+		beginStream();
+	}
+});
+
+banner.addEventListener('click', function() {
+	clearTimeout(banner.timeout);
+	$(banner.parentElement).slideUp();
+});
+
+window.addEventListener('keydown', function(e) {
+	if(e.keyCode == 70 || e.keyCode == 220) {
+		if(video.requestFullscreen) {
+			video.requestFullscreen();
+			return;
+		}
+		if(video.webkitRequestFullScreen) {
+			video.webkitRequestFullScreen();
+			return;
+		}
+		if(video.mozRequestFullScreen) {
+			video.mozRequestFullScreen();
+			return;
+		}
+		if(video.msRequestFullscreen) {
+			video.msRequestFullscreen();
+			return;
+		}
+	}
+});
+
+// displays a banner in the top of the screen for DEFAULT_BANNER_TIMEOUT
+function showBanner(text, persist) {
+	clearTimeout(banner.timeout);
+	banner.innerHTML = text;
+	$(banner.parentElement).slideDown();
+	banner.parentElement.style.display = 'table';
+
+	if(persist) {
+		return;
+	}
+
+	banner.timeout = setTimeout(function() {
+		$(banner.parentElement).slideUp();
+	}, DEFAULT_BANNER_TIMEOUT);
+};
+
+function initVideoObj(location) {
+	video = document.createElement('video');
+	video.src = streamURLFromLocation(location.pathname);
+	document.body.appendChild(video);
+
+	video.addEventListener('loadeddata', function() {
+		
+	});
+};
+
+function showOutput(text, timeout) {
+	overlay.style.display = 'table';
+	out.innerHTML = text;
+
+	if(!timeout) {
+		return;
+	}
+
+	setTimeout(function() {
+		$(overlay).fadeOut();
+	}, timeout);
+}
+
+function streamURLFromLocation(location) {
+	return location.replace(/^\/v\//gi, '/s/');
+};
+
+function beginStream() {
+	socket.emit('request_beginstream', {
+		timer: savedTimer
+	});
+};
+
+function handlePlaybackStatus(status) {
+	if(status.isPaused) {
+		video.pause();
+	}
+	if (!status.isStarted) {
+		out.innerHTML = 'The stream has not yet started. <span class="text-hl-name">Click to start it.</span>';
+		canStartStream = true;
+		return;
+	}
+
+	video.currentTime = status.timer;
+	video.play();
+
+	if(alertShown) {
+		return;
+	}
+
+	alertShown = true;
+
+	if(status.startedBy) {
+		showOutput('Welcome, the stream has already been started by ' + status.startedBy + '.', DEFAULT_OVERLAY_TIMEOUT);
+	} else {
+		showOutput('Welcome, the stream has already been started.', DEFAULT_OVERLAY_TIMEOUT);
+	}
+
+	socket.emit('request_streamsync');
+}
+</script>
+</body>
+</html>
