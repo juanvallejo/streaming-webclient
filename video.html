@@ -20,6 +20,67 @@
 #out {
 	cursor: pointer;
 }
+#chat-container {
+	background: rgba(255,255,255,0.05);
+	border-radius: 0 0 0 1px;
+	color: rgba(255,255,255,0.65);
+	min-width: 300px;
+	width: 400px;
+	max-width: 55%;
+	min-height: 50%;
+	height: 600px;
+	max-height: 600px;
+	position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 2;
+}
+	#chat-container-input {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		padding: 0;
+		height: 7%;
+	}
+		#chat-container-input input {
+			border-width: 1px 0 0 0;
+			border-color: rgba(255,255,255,0.1);
+			position: absolute;
+			padding: 0 2%;
+			left: 0;
+			margin: 0;
+			width: 96%;
+			height: 100%;
+		}
+	#chat-container-view {
+		opacity: 0.8;
+		position: absolute;
+		top: 0;
+		overflow: scroll;
+		left: 0;
+		width: 100%;
+		height: 93%;
+		word-wrap: break-word;
+	}
+		#chat-container-view-message {
+			display: block;
+			padding: 10px;
+			border-bottom: 1px solid rgba(255,255,255,0.1);
+			word-wrap: break-word;
+		}
+			#chat-container-view-message-user {
+
+			}
+			#chat-container-view-message-text {
+				word-wrap: break-word;
+			}
+	#chat-container-overlay {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		background: rgba(255,255,255,0.1);
+	}
 #banner-container {
 	background: rgba(0,0,0,0.6);
 	border-bottom: 1px solid rgba(0,0,0,0.6);
@@ -27,7 +88,20 @@
 	font-size: 0.9em;
 	height: 50px;
 	position: absolute;
-	z-index: 2;
+	z-index: 3;
+}
+
+.chat-container-view-message-image {
+	max-width: 100%;
+}
+.chat-container-input {
+			background: transparent;
+			color: inherit;
+			font: inherit;
+			top: 0;
+}
+.no-border {
+	border: 0;
 }
 .middle-container {
 	display: table;
@@ -46,6 +120,9 @@
 .text-hl-name {
 	color: rgba(205,55,0, 0.8)
 }
+.block {
+	display: block;
+}
 .text-center {
 	text-align: center;
 }
@@ -55,6 +132,7 @@
 body {
 	font: 300 16px 'Questrial';
 	background: black;
+	z-index: 999;
 }
 video {
 	width: 100%;
@@ -70,21 +148,284 @@ video {
 <div id="banner-container" class="full-size-hor middle-container">
 	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
 </div>
+<div id="chat-container">
+		<div id="chat-container-view"></div>
+		<div id="chat-container-input">
+			<input type="text" class="chat-container-input" />
+		</div>
+		<div id="chat-container-overlay">
+			<div class="full-size middle-container">
+				<input class="full-size middle text-center chat-container-input no-border" id="chat-container-username-input" type="text" placeholder="Please enter a username to continue."/>
+			</div>
+		</div>
+</div>
 <script>
 var DEFAULT_BANNER_TIMEOUT = 4500;
 var DEFAULT_OVERLAY_TIMEOUT = 5000;
+var ERR_CODE_NOT_FOUND = 4;
+
+var socket = io.connect(window.location.origin);
 
 var overlay = document.getElementById("overlay");
 var out = document.getElementById("out");
 var banner = document.getElementById("banner");
+var usernameInput = document.getElementById('chat-container-username-input');
+var chatOverlay = document.getElementById('chat-container-overlay');
+var chat = new Chat(document.getElementById('chat-container'),
+	document.getElementById('chat-container-view'), 
+	document.getElementById('chat-container-input').children[0]);
+	chat.hide(true);
+	if(localStorage.username) {
+		socket.emit('request_updateusername', {
+			user: localStorage.username
+		});
+	}
 
-var socket = io.connect(window.location.origin);
+var username = 'Anonymous';
 var initVideo = false;
 var canStartStream = false;
 var alertShown = false;
 var video = null;
 var savedTimer = null;
 var connectionLost = false;
+var sourceFileError = null;
+
+function Chat(container, viewElem, inputElem) {
+	var self = this;
+
+	this.container = container;
+	this.view = viewElem;
+	this.input = inputElem;
+	this.focused = false;
+	this.hidden = false;
+	this.width = container.clientWidth;
+	this.height = container.clientHeight;
+	this.timeout = null;
+	this.chatHideDelay = 1000;
+	this.hasMouseOver = false;
+	this.isRegistered =  false;
+	this.user = 'Anonymous';
+
+	this.getView = function() {
+		return this.view;
+	};
+	this.getInput = function() {
+		return this.input;
+	};
+	this.getContainer = function() {
+		return this.container;
+	};
+
+	this.getUsername = function() {
+		return this.user;
+	};
+
+	this.getWidth = function() {
+		return this.width;
+	};
+	this.getHeight = function() {
+		return this.height;
+	};
+
+	this.clearInput = function() {
+		this.input.value = '';
+	};
+
+	this.focusInput = function() {
+		this.input.focus();
+		this.isFocused(true);
+	};
+
+	this.register = function(username) {
+		this.isRegistered = true;
+		this.user = username;
+	};
+
+	// clears all messages from the chat's view
+	this.clearView = function() {
+		this.view.innerHTML = '';
+	};
+
+	this.show = function(noAnimation) {
+		this.hidden = false;
+		if(noAnimation) {
+			this.container.style.display = 'block';
+			return;
+		}
+		$(this.container).fadeIn();
+		if(!this.hasMouseOver && !this.isFocused()) {
+			clearTimeout(this.timeout);
+			this.timeout = setTimeout(function() {
+				self.hide();
+			}, this.chatHideDelay);
+		}
+	};
+	this.hide = function(noAnimation) {
+		this.hidden = true;
+		if(noAnimation) {
+			this.container.style.display = 'none';
+			return;
+		}
+		$(this.container).fadeOut();
+	};
+
+	this.isHidden = function() {
+		return this.hidden;
+	};
+	this.isFocused = function(focused) {
+		if(focused !== undefined) {
+			this.focused = focused;
+			return this.focused;
+		}
+		return this.focused;
+	};
+
+	this.videoURLToEmbeddable = function(link) {
+		var videoId = link;
+		if(link.match(/watch\?v\=/gi)) {
+			videoId = link.split("watch?v=")[1];
+		} else {
+			videoId = link.split('/');
+			videoId = videoId[videoId.length - 1];
+		}
+		return ('https://www.youtube.com/embed/' + videoId);
+	};
+
+	this.addMessage = function(data) {
+		var message = document.createElement('span');
+		message.id = 'chat-container-view-message';
+		message.innerHTML = (!data.system ? ('<span id="chat-container-view-message-user" class="text-hl-name">' + data.user + ': ') : '') + '</span><span id="chat-container-view-message-text">' + data.message + '</span>';
+
+		if(data.images && data.images.length) {
+			var noun = 'image';
+			if(data.images.length > 1) {
+				noun += 's';
+			}
+
+			var images = [];
+			var imagesLoaded = 0;
+			message.innerHTML += '<span class="block full-size images-loading-text">[loading ' + noun + '...]</span>';
+			for(var i = 0; i < data.images.length; i++) {
+				images[i] = new Image();
+				images[i].src = data.images[i];
+				images[i].addEventListener('load', function(image, message) {
+					return function() {
+						checkImagesLoaded(message);
+						var imageSpan = document.createElement('span');
+						imageSpan.className = 'full-size text-center block chat-container-view-message-image';
+						imageSpan.appendChild(image);
+						message.appendChild(imageSpan);
+
+						if(images.length > 1) {
+							self.view.scrollTop += imageSpan.clientHeight;
+							return;
+						}
+
+						$(self.view).animate({scrollTop: self.view.scrollTop + imageSpan.clientHeight * 2}, 500);
+					};
+				}(images[i], message));
+				images[i].addEventListener('error', function(image, message) {
+					return function() {
+						checkImagesLoaded(message);
+						message.innerHTML += '<span class="block full-size">An error ocurred loading image with url "' + image.src + '"</span>';
+					};
+				}(images[i], message));
+			}
+
+			function checkImagesLoaded(message) {
+				imagesLoaded++;
+				if(imagesLoaded >= images.length) {
+					var imagesLoadingText = message.getElementsByClassName('images-loading-text');
+					if(imagesLoadingText && imagesLoadingText.item(0)) {
+						message.removeChild(imagesLoadingText.item(0));
+					}
+				}
+			};
+
+		}
+
+		if(data.videos && data.videos.length) {
+			for(var i = 0; i < data.videos.length; i++) {
+				var video = document.createElement('iframe');
+				video.className = 'full-size text-center block chat-container-view-message-image';
+				video.frameborder = "0";
+				video.allowfullscreen = true;
+				video.src = self.videoURLToEmbeddable(data.videos[i]);
+				message.appendChild(video);
+			}
+		}
+
+		this.view.appendChild(message);
+
+		if((data.images && data.images.length > 1)) {
+			this.view.scrollTop = this.view.scrollHeight * 2;
+			return;
+		}
+		$(this.view).animate({scrollTop: this.view.scrollHeight}, 500);
+	};
+
+	this.sendText = function(sender, text) {
+		this.clearInput();
+		socket.emit('request_chatmessage', {
+			user: sender,
+			message: text,
+			location: window.location
+		});
+	};
+
+	this.handleMouseOver = function(x, y) {
+		this.hasMouseOver = true;
+		clearTimeout(this.timeout);
+
+		if(!this.isHidden()) {
+			return;
+		}
+
+		this.show();
+	};
+
+	this.handleMouseOut = function() {
+		this.hasMouseOver = false;
+		clearTimeout(this.timeout);
+		if(this.isFocused()) {
+			clearTimeout(this.timeout);
+			return;
+		}
+
+		this.timeout = setTimeout(function() {
+			if(self.isFocused()) {
+				return;
+			}
+			self.hide();
+		}, this.chatHideDelay);
+	};
+
+	this.handleKeypress = function(keyCode) {
+		switch(keyCode) {
+			case 13:
+				if(!this.input.value) {
+					break;
+				}
+				this.sendText((localStorage.username || chat.getUsername()), this.input.value);
+				this.focusInput();
+				break;
+		}
+	};
+
+	this.input.addEventListener('focus', function() {
+		self.isFocused(true);
+	});
+	this.input.addEventListener('blur', function() {
+		if(!self.hasMouseOver) {
+			self.handleMouseOut();
+		}
+		self.isFocused(false);
+	});
+
+	this.input.addEventListener('keypress', function(e) {
+		self.handleKeypress(e.keyCode);
+	});
+}
 
 socket.on('connect', function() {
 	if(savedTimer) {
@@ -95,17 +436,38 @@ socket.on('connect', function() {
 	if(connectionLost) {
 		connectionLost = false;
 		showBanner('Connection reestablished. Resuming stream.');
+
+		if(localStorage.username) {
+			socket.emit('request_updateusername', {
+				user: localStorage.username
+			});
+		}
 	}
 });
 
 socket.on('playbackstatus', function(data) {
-	console.log('received playback status', data);
 	if(!initVideo) {
 		initVideo = true;
 		initVideoObj(window.location);
 	}
 
 	handlePlaybackStatus(data.playback);
+});
+
+socket.on('updateusername', function(data) {
+	localStorage.username = data.user;
+	chat.register(data.user);
+	if(!chat.isHidden()) {
+		chat.focusInput();
+	}
+	chatOverlay.style.display = 'none';
+});
+
+socket.on('info_updateusername', function(data) {
+	if(data.user == localStorage.username || data.oldUser == localStorage.username) {
+		return showBanner('<span class="text-hl-name">You</span> are now known as ' + data.user);
+	}
+	showBanner('<span class="text-hl-name">' + (data.oldUser || 'Anonymous (' + (data.id || 'unknown id') +')')	+ '</span> is now known as ' + data.user);
 });
 
 socket.on('beginstream', function(data) {
@@ -115,23 +477,60 @@ socket.on('beginstream', function(data) {
 	canStartStream = false;
 });
 
+socket.on('chatmethodaction', function(data) {
+	if(typeof chat[data.method] != 'function') {
+		showBanner('Warning: The server has requested an invalid action (' + data.method + ') to be performed.');
+		console.log('Warning: The server requested an invalid action (' + data.method + ') from the chat handler. Possible incompatible version of the server being used.');
+		return;
+	}
+
+	chat[data.method].apply(chat, data.args);
+});
+
+socket.on('chatmessage', function(data) {
+	if(chat.isRegistered) {
+		chat.show();
+	}
+	chat.addMessage(data);
+});
+
 socket.on('streamsync', function(data) {
 	console.log('received streamsync command', data);
-	if(Math.abs(parseInt(data.timer) - parseInt(video.currentTime)) > 10) {
+	if(Math.abs(parseInt(data.timer) - parseInt(video.currentTime)) > 10 && !data.stop) {
 		showBanner('Video stream lag detected. Syncing your stream.');
 	}
 
+	if(data.stop) {
+		video.pause();
+		canStartStream = true;
+	} else {
+		video.play();
+	}
 	video.currentTime = data.timer;
-	video.play();
+});
+
+socket.on('textinputerror', function(data) {
+	showBanner(data.error);
 });
 
 socket.on('info_clientjoined', function(data) {
-	console.log('> client', data.id, 'has joined the stream.');
 	showBanner('client <span class="text-hl-name">' + data.id + '</span> has joined the stream.');
 });
 
 socket.on('info_clientleft', function(data) {
-	showBanner('client <span class="text-hl-name">' + data.id + '</span> has left the stream.');
+	showBanner('client <span class="text-hl-name">' + (data.user || data.id) + '</span> has left the stream.');
+});
+
+socket.on('system_ping', function() {
+	socket.emit('system_ping')
+})
+
+socket.on('info_subtitles', function(data) {
+	if(data.on && data.path) {
+		addSubtitles(data.path);
+		return;
+	}
+	removeSubtitles();
 });
 
 socket.on('disconnect', function() {
@@ -155,8 +554,35 @@ banner.addEventListener('click', function() {
 	$(banner.parentElement).slideUp();
 });
 
+usernameInput.addEventListener('keydown', function(e) {
+	if (e.keyCode == 13) {
+		if(!usernameInput.value.match(/^[a-z0-9\_]+$/gi)) {
+			showBanner('Usernames may only contain letters, numbers, and underscores.');
+			return;
+		}
+
+		socket.emit('request_updateusername', {
+			user: usernameInput.value
+		});
+		usernameInput.value = '';
+	}
+});
+
+window.addEventListener('mousemove', function(e) {
+	var appWidth = window.innerWidth;
+	var chatWidth = chat.getWidth();
+	var chatHeight = chat.getHeight();
+
+	if(e.clientX >= appWidth - chatWidth && e.clientY <= chatHeight) {
+		chat.handleMouseOver(e.clientX, e.clientY);
+		return;
+	}
+
+	chat.handleMouseOut();
+});
+
 window.addEventListener('keydown', function(e) {
-	if(e.keyCode == 70 || e.keyCode == 220) {
+	if((e.keyCode == 70 || e.keyCode == 220) && !chat.isFocused() && usernameInput !== document.activeElement) {
 		if(video.requestFullscreen) {
 			video.requestFullscreen();
 			return;
@@ -175,6 +601,21 @@ window.addEventListener('keydown', function(e) {
 		}
 	}
 });
+
+function addSubtitles(path) {
+	var track = document.createElement('track');
+	track.label = "English";
+	track.kind = "subtitles";
+	track.srclang = "en";
+	track.src = path;
+	track.default = true;
+
+	video.appendChild(track);
+};
+
+function removeSubtitles() {
+
+};
 
 // displays a banner in the top of the screen for DEFAULT_BANNER_TIMEOUT
 function showBanner(text, persist) {
@@ -197,8 +638,30 @@ function initVideoObj(location) {
 	video.src = streamURLFromLocation(location.pathname);
 	document.body.appendChild(video);
 
-	video.addEventListener('loadeddata', function() {
-		
+	video.addEventListener('loadedmetadata', function() {
+		// TODO add subtitles track
+		// videoTrack = document.createElement('track');
+		// videoTrack.label = "English";
+		// videoTrack.kind = "captions";
+		// videoTrack.srclang = "en";
+		// videoTrack.src = '/static/subtitles/sample.mp4.srt';
+		// videoTrack.addEventListener('load', function() {
+		// 	this.mode = 'showing';
+		// 	video.textTracks[0].mode = 'showing';
+		// });
+
+		// this.appendChild(videoTrack);
+	});
+
+	video.addEventListener('error', function(err) {
+		if(err.target.error.code == ERR_CODE_NOT_FOUND) {
+			out.innerHTML = 'The video file <span class="text-hl-name">' + (window.location.pathname.replace(/\/v\//gi, '')) + '</span> could not be found.';
+		} else {
+			out.innerHTML = 'Unexpectd error occurred while receiving video data.';
+		}
+
+		sourceFileError = true;
+		canStartStream = false;		
 	});
 };
 
@@ -229,7 +692,11 @@ function handlePlaybackStatus(status) {
 	if(status.isPaused) {
 		video.pause();
 	}
+
 	if (!status.isStarted) {
+		if(sourceFileError) {
+			return;
+		}
 		out.innerHTML = 'The stream has not yet started. <span class="text-hl-name">Click to start it.</span>';
 		canStartStream = true;
 		return;
