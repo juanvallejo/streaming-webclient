@@ -802,7 +802,7 @@ var app = http.createServer(function(req, res) {
 		return pathHandler(req, res);
 	}
 
-	res.end('Hello world');
+	serveIndex('index', req, res, 404);
 });
 
 console.log('INFO', 'Listening on port', APP_PORT);

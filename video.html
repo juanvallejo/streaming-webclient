@@ -495,7 +495,7 @@ socket.on('chatmessage', function(data) {
 });
 
 socket.on('streamsync', function(data) {
-	console.log('received streamsync command', data);
+	console.log('received streamsync command', data, 'currentTime was', video.currentTime);
 	if(Math.abs(parseInt(data.timer) - parseInt(video.currentTime)) > 10 && !data.stop) {
 		showBanner('Video stream lag detected. Syncing your stream.');
 	}
@@ -506,7 +506,16 @@ socket.on('streamsync', function(data) {
 	} else {
 		video.play();
 	}
+
 	video.currentTime = data.timer;
+
+	// safari bug fix - currentTime will not take
+	// effect until a second afterthe page has loaded
+	if(!video.currentTime) {
+		setTimeout(function() {
+			video.currentTime = (data.timer + 1);
+		}, 1000);
+	}
 });
 
 socket.on('textinputerror', function(data) {
