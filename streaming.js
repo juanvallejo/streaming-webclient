@@ -403,7 +403,7 @@ function Socket(io) {
 
 	// sends a general app error to a client (is not concerned with chat)
 	this.broadcastErrorTo = function(client, errorMsg) {
-		socket.broadcastTo(client, 'textinputerror', {
+		socket.broadcastTo(client, 'info_clienterror', {
 			error: errorMsg,
 			system: true
 		});
