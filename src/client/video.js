@@ -28,10 +28,6 @@ function Video(videoElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		if (this.video) {
-			return;
-		}
-
 		this.video.src = streamURLFromLocation(location.pathname);
 	};
 
@@ -54,10 +50,11 @@ function Video(videoElement) {
 
 		if (!status.isStarted) {
 			if (this.sourceFileError) {
+				console.log('Detected source file error, preventing stream from being started.');
 				return;
 			}
 			outputHandler('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
-			canStartStream = true;
+			this.canStartStream = true;
 			return;
 		}
 

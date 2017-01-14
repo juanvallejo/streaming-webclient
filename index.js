@@ -684,6 +684,8 @@ function addSocketEvents() {
 		// if client sent saved timer, only broadcast to that client.
 		// chances are that every separate client will request this.
 		if (data && data.timer) {
+			console.log('INFO', 'client', client.id, 'requested stream to begin at time', data.timer, parseInt(data.timer) || 0);
+
 			playback.start(client, parseInt(data.timer));
 			socket.broadcastTo(client, 'beginstream', {
 				timer: parseInt(data.timer) || 0

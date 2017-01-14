@@ -366,7 +366,7 @@ function App() {
 			});
 		}
 
-		// add elem event listeners
+		// add main overlay event listener
 		this.out.addEventListener('click', function() {
 			if (self.video.canStartStream) {
 				self.video.beginStream(self.socket);
@@ -440,6 +440,17 @@ function App() {
 				});
 			}
 		}
+	});
+
+	this.socket.on('disconnect', function() {
+		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
+		self.video.savedTimer = self.video.getVideo().currentTime;
+		console.log('saved timer was', self.video.savedTimer);
+		self.video.pause();
+		self.video.canStartStream = false;
+		self.connectionLost = true;
+
+		$(overlay).fadeIn();
 	});
 
 	this.socket.on('playbackstatus', function(data) {
@@ -534,16 +545,6 @@ function App() {
 		// removeSubtitles();
 	});
 
-	this.socket.on('disconnect', function() {
-		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
-		savedTimer = self.video.getVideo().currentTime;
-		self.video.pause();
-		self.video.canStartStream = false;
-		self.connectionLost = true;
-
-		$(overlay).fadeIn();
-	});
-
 	// add window event listeners
 	window.addEventListener('mousemove', function(e) {
 		var appWidth = window.innerWidth;
@@ -604,7 +605,7 @@ function Emitter() {
 
 		var fns = this.callbacks[e]
 		for (var i = 0; i < fns.length; i++) {
-			fns[i].apply(this, params);
+			fns[i].apply(this, params || []);
 		}
 	};
 }
@@ -615,100 +616,27 @@ module.exports = Emitter;
  * application socket utils, emitters, and listeners
  */
 
-// stores callback function data to be called on Socket#emit
-function SocketEvent(fn, params) {
-	this.callback = fn || function() {};
-	this.params = params || [];
-	this.ctx = this;
-
-	this.call = function(params) {
-		this.setParams(params || []);
-		this.callback.apply(this.ctx || this, this.params);
-	};
-	this.set = function(fn, params) {
-		this.callback = fn;
-		this.params = params;
-	};
-
-	this.setCallback = function(fn) {
-		this.callback = fn;
-	};
-
-	// sets the event's params to the speficied array
-	// or appends the specified array to an existing
-	// array of previously specified params.
-	this.setParams = function(params) {
-		if (this.params && this.params.length) {
-			for (var i = 0; i < params; i++) {
-				this.params.push(params[i]);
-			}
-			return;
-		}
-		this.params = params;
-	};
-
-	this.bind = function(ctx) {
-		this.ctx = ctx;
-	};
-};
-
-// a list structure for SocketEvent objects
-function SocketEventList() {
-	this.socket_events = [];
-
-	// appends a new SocketEvent to the end of the list
-	// returns the newly added SocketEvent.
-	this.push = function(socketEvent) {
-		this.socket_events.push(socketEvent);
-		return socketEvent;
-	};
-
-	// iterates through every socket event and calls each one
-	this.callAll = function(params) {
-		console.log('calling all with params', params);
-		params = params || [];
-		for (var i = 0; i < this.socket_events.length; i++) {
-			this.socket_events[i].call(params);
-		}
-	};
-}
+var Emitter = require('./proto/emitter.js');
 
 function Socket(url) {
 	var self = this;
 
 	this.socket = io.connect(url || window.location.origin);
 
-	// map['evtName']->SocketEventList
-	this.callbacks = {};
-
-	// iterates through every stored function for an evtName
-	// and calls the function with stored params
-	this.emit = function(evtName, params) {
-		if (!this.callbacks[evtName]) {
-			return;
-		}
-
-		var evtList = this.callbacks[evtName];
-		evtList.callAll(params);
-	};
-
 	// stores a SocketEvent with a evtName key
 	// returns the pushed SocketEvent
 	this.on = function(evtName, fn, params) {
 		if (!this.callbacks[evtName]) {
-			this.callbacks[evtName] = new SocketEventList();
+			this.callbacks[evtName] = [];
 
 			// subscribe to the netSocket event
-			this.socket.on(evtName, (function(evtName) {
-				return function(args) {
-					if (evtName == 'chatmessage') {
-						console.log(arguments);
-					}
-					self.emit(evtName, arguments);
+			this.socket.on(evtName, (function(e) {
+				return function() {
+					self.emit(e, arguments);
 				}
 			})(evtName));
 		}
-		return this.callbacks[evtName].push(new SocketEvent(fn, params));
+		return this.callbacks[evtName].push(fn);
 	};
 
 	// emits a socket message -> differs from this#emit
@@ -716,10 +644,12 @@ function Socket(url) {
 	this.send = function(netEvtName, data) {
 		this.socket.emit(netEvtName, data);
 	};
-}
+};
+
+Socket.prototype = new Emitter();
 
 module.exports = Socket;
-},{}],7:[function(require,module,exports){
+},{"./proto/emitter.js":5}],7:[function(require,module,exports){
 /**
  * handles local video streaming
  */
@@ -750,10 +680,6 @@ function Video(videoElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		if (this.video) {
-			return;
-		}
-
 		this.video.src = streamURLFromLocation(location.pathname);
 	};
 
@@ -776,10 +702,11 @@ function Video(videoElement) {
 
 		if (!status.isStarted) {
 			if (this.sourceFileError) {
+				console.log('Detected source file error, preventing stream from being started.');
 				return;
 			}
 			outputHandler('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
-			canStartStream = true;
+			this.canStartStream = true;
 			return;
 		}
 

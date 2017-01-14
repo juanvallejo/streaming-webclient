@@ -43,7 +43,7 @@ function App() {
 			});
 		}
 
-		// add elem event listeners
+		// add main overlay event listener
 		this.out.addEventListener('click', function() {
 			if (self.video.canStartStream) {
 				self.video.beginStream(self.socket);
@@ -117,6 +117,17 @@ function App() {
 				});
 			}
 		}
+	});
+
+	this.socket.on('disconnect', function() {
+		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
+		self.video.savedTimer = self.video.getVideo().currentTime;
+		console.log('saved timer was', self.video.savedTimer);
+		self.video.pause();
+		self.video.canStartStream = false;
+		self.connectionLost = true;
+
+		$(overlay).fadeIn();
 	});
 
 	this.socket.on('playbackstatus', function(data) {
@@ -209,16 +220,6 @@ function App() {
 			return;
 		}
 		// removeSubtitles();
-	});
-
-	this.socket.on('disconnect', function() {
-		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
-		savedTimer = self.video.getVideo().currentTime;
-		self.video.pause();
-		self.video.canStartStream = false;
-		self.connectionLost = true;
-
-		$(overlay).fadeIn();
 	});
 
 	// add window event listeners

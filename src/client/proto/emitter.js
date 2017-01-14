@@ -19,7 +19,7 @@ function Emitter() {
 
 		var fns = this.callbacks[e]
 		for (var i = 0; i < fns.length; i++) {
-			fns[i].apply(this, params);
+			fns[i].apply(this, params || []);
 		}
 	};
 }
