@@ -47,8 +47,10 @@ function Playback() {
 
 	this.isStarted = false;
 	this.startedBy = null;
-	this.isPaused = false;
+	this.isPaused = true;
 	this.timer = 1;
+	this.timeout = null;
+	this.increaseTimeout = null;
 
 	// begin playback and playback timer
 	this.start = function(client, resumeTime) {
@@ -69,17 +71,28 @@ function Playback() {
 		this.isPaused = false;
 
 		// increase playback timer every second
-		setTimeout(function t() {
+		clearTimeout(this.timeout);
+		this.timeout = setTimeout(function t() {
 			self.increase(1, 1000, function(increment, timeout, callback) {
 				if (self.timer % 60 == 0 && self.timer > 0) {
 					console.log('INFO', 'sending streamsync command to', socket.getSize(), 'clients.');
 					socket.broadcastAll(null, 'streamsync', {
-						timer: this.timer
+						timer: this.timer,
+						playback: playback.getStatus()
 					});
 				}
 				this.increase.call(this, increment, timeout, callback);
 			});
 		}, 1000);
+	};
+
+	this.getStatus = function() {
+		return {
+			startedBy: self.startedBy,
+			timer: self.timer,
+			isPaused: self.isPaused,
+			isStarted: self.isStarted
+		};
 	};
 
 	this.increase = function(increment, timeout, callback) {
@@ -92,7 +105,8 @@ function Playback() {
 			return;
 		}
 
-		setTimeout(function() {
+		clearTimeout(this.increaseTimeout);
+		this.increaseTimeout = setTimeout(function() {
 			callback.call(self, increment, timeout, callback);
 		}, timeout);
 	};
@@ -539,8 +553,8 @@ function addSocketCommands() {
 		if (args[0] == 'pause') {
 			playback.pause();
 			socket.broadcastAll(client, 'streamsync', {
-				stop: true,
-				timer: playback.timer
+				timer: playback.timer,
+				playback: playback.getStatus()
 			});
 			return 'Pausing stream...';
 		}
@@ -548,23 +562,24 @@ function addSocketCommands() {
 			playback.stop();
 			playback.isStarted = false;
 			socket.broadcastAll(client, 'streamsync', {
-				stop: true,
-				timer: playback.timer
+				timer: playback.timer,
+				playback: playback.getStatus()
 			});
 			return 'Stopping stream...';
 		}
 		if (args[0] == 'play') {
 			playback.play();
 			socket.broadcastAll(client, 'streamsync', {
-				timer: playback.timer
+				timer: playback.timer,
+				playback: playback.getStatus()
 			});
 			return 'Playing stream...';
 		}
 		if (args[0] == 'reset') {
 			playback.reset();
 			socket.broadcastAll(client, 'streamsync', {
-				stop: true,
-				timer: playback.timer
+				timer: playback.timer,
+				playback: playback.getStatus()
 			});
 			return 'Resetting stream...';
 		}
@@ -658,19 +673,6 @@ function convertHTMLEntities(text) {
 };
 
 function addSocketEvents() {
-	socket.on('request_playbackstatus', function(client, data) {
-		console.log('INFO client', client.id, 'requested playback status', data);
-		socket.broadcastTo(client, 'playbackstatus', {
-			location: data.location,
-			playback: {
-				startedBy: playback.startedBy,
-				timer: playback.timer,
-				isPaused: playback.isPaused,
-				isStarted: playback.isStarted
-			}
-		});
-	});
-
 	socket.on('system_ping', function(client) {
 		console.log('INFO', 'received ping from client', client.id, '... keeping connection alive.', socket.getClients(function(client) {
 			return client.id;
@@ -702,7 +704,8 @@ function addSocketEvents() {
 	socket.on('request_streamsync', function(client) {
 		console.log('INFO client', client.id, 'requested a stream sync');
 		socket.broadcastAll(client, 'streamsync', {
-			timer: playback.timer
+			timer: playback.timer,
+			playback: playback.getStatus()
 		});
 
 	});
@@ -828,11 +831,7 @@ io.listen(app).on('connection', function(client) {
 		id: client.id
 	});
 
-	socket.emit('request_playbackstatus', [client, {}]);
-
-	client.on('request_playbackstatus', function(data) {
-		socket.emit('request_playbackstatus', [client, data]);
-	});
+	socket.emit('request_streamsync', [client, {}]);
 
 	client.on('request_beginstream', function(data) {
 		socket.emit('request_beginstream', [client, data]);

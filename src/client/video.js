@@ -9,6 +9,7 @@ function Video(videoElement) {
 	var self = this;
 
 	this.video = videoElement;
+	this.duration = null;
 	this.savedTimer = null;
 	this.sourceFileError = null;
 	this.alertShown = false;
@@ -28,52 +29,41 @@ function Video(videoElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		this.video.src = streamURLFromLocation(location.pathname);
+		this.video.src = getStreamURLFromLocation(location.pathname);
 	};
 
 	this.appendTo = function(parent) {
 		parent.appendChild(this.video);
 	};
 
-	this.play = function() {
-		this.video.play();
+	this.play = function(time) {
+		if (time) {
+			this.video.currentTime = time;
+		}
+		if (this.video.muted) {
+			console.log('WARN:', 'playing muted video...');
+		}
+		try {
+			this.video.play();
+		} catch(e) {
+			console.log('EXCEPT VIDEO PLAY', e);
+		}
 	};
 
 	this.pause = function() {
-		this.video.pause();
+		try {
+			this.video.pause();
+		} catch(e) {
+			console.log('EXCEPT VIDEO PAUSE', e);
+		}
 	};
 
-	this.handlePlaybackStatus = function(status, socket, outputHandler) {
-		if (status.isPaused) {
-			this.video.pause();
-		}
+	this.setTime = function(time) {
+		this.video.currentTime = time;
+	};
 
-		if (!status.isStarted) {
-			if (this.sourceFileError) {
-				console.log('Detected source file error, preventing stream from being started.');
-				return;
-			}
-			outputHandler('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
-			this.canStartStream = true;
-			return;
-		}
-
-		this.video.currentTime = status.timer;
-		this.video.play();
-
-		if (this.alertShown) {
-			return;
-		}
-
-		this.alertShown = true;
-
-		if (status.startedBy) {
-			outputHandler('Welcome, the stream has already been started by ' + status.startedBy + '.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-		} else {
-			outputHandler('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-		}
-
-		socket.send('request_streamsync');
+	this.getTime = function() {
+		return this.video.currentTime;
 	};
 
 	this.beginStream = function(socket) {
@@ -85,11 +75,20 @@ function Video(videoElement) {
 	this.getVideo = function() {
 		return this.video;
 	};
+
+	this.getDuration = function() {
+		return this.duration;
+	};
+
+	// add event listeners
+	this.on('loadedmetadata', function() {
+		self.duration = self.video.duration;
+	});
 };
 
 Video.prototype = new Emitter();
 
-function streamURLFromLocation(location) {
+function getStreamURLFromLocation(location) {
 	return location.replace(/^\/v\//gi, '/s/');
 }
 

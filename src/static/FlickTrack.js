@@ -338,6 +338,7 @@ function App() {
 
 	this.overlay = document.getElementById("overlay");
 	this.out = document.getElementById("out");
+	this.outTimeout = null;
 	this.ytvideo = document.getElementById('yt-video');
 
 	this.chat = new Chat(document.getElementById('chat-container'),
@@ -411,6 +412,8 @@ function App() {
 	};
 
 	this.showOutput = function(text, timeout) {
+		clearTimeout(this.outTimeout);
+
 		this.overlay.style.display = 'table';
 		this.out.innerHTML = text;
 
@@ -418,9 +421,13 @@ function App() {
 			return;
 		}
 
-		setTimeout(function() {
-			$(self.overlay).fadeOut();
+		this.outTimeout = setTimeout(function() {
+			self.hideOutput();
 		}, timeout);
+	};
+
+	this.hideOutput = function() {
+		$(self.overlay).fadeOut();
 	};
 
 	// register socket events
@@ -444,17 +451,15 @@ function App() {
 
 	this.socket.on('disconnect', function() {
 		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
-		self.video.savedTimer = self.video.getVideo().currentTime;
+		self.video.savedTimer = self.video.getTime();
+
 		console.log('saved timer was', self.video.savedTimer);
+		
 		self.video.pause();
 		self.video.canStartStream = false;
 		self.connectionLost = true;
 
-		$(overlay).fadeIn();
-	});
-
-	this.socket.on('playbackstatus', function(data) {
-		self.video.handlePlaybackStatus(data.playback, self.socket, self.showOutput);
+		self.showOutput('The stream will resume momentarily.<br />Please stand by.');
 	});
 
 	this.socket.on('updateusername', function(data) {
@@ -474,10 +479,9 @@ function App() {
 	});
 
 	this.socket.on('beginstream', function(data) {
-		self.video.getVideo().currentTime = data.timer;
-		self.video.play();
-		$(self.overlay).hide();
 		self.video.canStartStream = false;
+		self.video.play(data.timer);
+		$(self.overlay).hide();
 	});
 
 	this.socket.on('chatmethodaction', function(data) {
@@ -498,27 +502,84 @@ function App() {
 	});
 
 	this.socket.on('streamsync', function(data) {
-		console.log('received streamsync command', data, 'currentTime was', self.video.getVideo().currentTime);
-		if (Math.abs(parseInt(data.timer) - parseInt(self.video.getVideo().currentTime)) > 10 && !data.stop) {
-			self.banner.showBanner('Video stream lag detected. Syncing your stream.');
+		console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
+
+		self.video.canStartStream = false;
+
+		var isNewClient = false;
+		if (!self.video.alertShown) {
+			self.video.alertShown = true;
+			isNewClient = true;
 		}
 
-		if (data.stop) {
-			self.video.pause();
-			self.video.canStartStream = true;
-		} else {
-			self.video.play();
+		if (Math.abs(parseInt(data.playback.timer) - parseInt(self.video.getTime())) > 10 && !data.playback.isPaused) {
+			if (data.playback.timer == 1) {
+				self.banner.showBanner('Resetting stream, please wait...');
+			} else if (parseInt(data.playback.timer) - parseInt(self.video.getTime()) <= 0) {
+				self.banner.showBanner('Rewinding stream, please wait...');
+			} else {
+				self.banner.showBanner('Video stream lag detected. Syncing your stream...');
+			}
 		}
 
-		self.video.getVideo().currentTime = data.timer;
+		self.video.setTime(data.playback.timer);
 
 		// safari bug fix - currentTime will not take
 		// effect until a second afterthe page has loaded
-		if (!self.video.getVideo().currentTime) {
+		if (!self.video.getTime()) {
 			setTimeout(function() {
-				self.video.getVideo().currentTime = (data.timer + 1);
+				self.video.setTime(data.playback.timer + 1);
 			}, 1000);
 		}
+
+		if (data.playback.isPaused) {
+			self.video.pause();
+
+			if (!data.playback.isStarted) {
+				if(self.video.sourceFileError) {
+					console.log('FATAL', 'Detected source file error, preventing stream from starting.');
+					return;
+				}
+
+				self.showOutput('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
+				
+				self.video.canStartStream = true;
+				return;
+			}
+
+			if (isNewClient) {
+				self.showOutput('Welcome, The stream has been paused.');
+			} else {
+				self.showOutput('The stream has been paused.');
+			}
+
+			return;
+		}
+
+		self.hideOutput();
+
+		// handle video end
+		if (self.video.getDuration() && data.playback.timer > self.video.getDuration()) {
+			self.chat.sendText(self.socket, 'system', '/stream stop');
+			
+			if (isNewClient) {
+				self.showOutput('Welcome, the stream has already ended.');
+			} else {
+				self.showOutput('The stream has ended.');
+			}
+
+			return;
+		}
+
+		if(isNewClient) {
+			if (data.playback.startedBy) {
+				self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.playback.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+			} else {
+				self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+			}
+		}
+
+		self.video.play();
 	});
 
 	this.socket.on('info_clienterror', function(data) {
@@ -661,6 +722,7 @@ function Video(videoElement) {
 	var self = this;
 
 	this.video = videoElement;
+	this.duration = null;
 	this.savedTimer = null;
 	this.sourceFileError = null;
 	this.alertShown = false;
@@ -680,52 +742,41 @@ function Video(videoElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		this.video.src = streamURLFromLocation(location.pathname);
+		this.video.src = getStreamURLFromLocation(location.pathname);
 	};
 
 	this.appendTo = function(parent) {
 		parent.appendChild(this.video);
 	};
 
-	this.play = function() {
-		this.video.play();
+	this.play = function(time) {
+		if (time) {
+			this.video.currentTime = time;
+		}
+		if (this.video.muted) {
+			console.log('WARN:', 'playing muted video...');
+		}
+		try {
+			this.video.play();
+		} catch(e) {
+			console.log('EXCEPT VIDEO PLAY', e);
+		}
 	};
 
 	this.pause = function() {
-		this.video.pause();
+		try {
+			this.video.pause();
+		} catch(e) {
+			console.log('EXCEPT VIDEO PAUSE', e);
+		}
 	};
 
-	this.handlePlaybackStatus = function(status, socket, outputHandler) {
-		if (status.isPaused) {
-			this.video.pause();
-		}
+	this.setTime = function(time) {
+		this.video.currentTime = time;
+	};
 
-		if (!status.isStarted) {
-			if (this.sourceFileError) {
-				console.log('Detected source file error, preventing stream from being started.');
-				return;
-			}
-			outputHandler('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
-			this.canStartStream = true;
-			return;
-		}
-
-		this.video.currentTime = status.timer;
-		this.video.play();
-
-		if (this.alertShown) {
-			return;
-		}
-
-		this.alertShown = true;
-
-		if (status.startedBy) {
-			outputHandler('Welcome, the stream has already been started by ' + status.startedBy + '.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-		} else {
-			outputHandler('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-		}
-
-		socket.send('request_streamsync');
+	this.getTime = function() {
+		return this.video.currentTime;
 	};
 
 	this.beginStream = function(socket) {
@@ -737,11 +788,20 @@ function Video(videoElement) {
 	this.getVideo = function() {
 		return this.video;
 	};
+
+	this.getDuration = function() {
+		return this.duration;
+	};
+
+	// add event listeners
+	this.on('loadedmetadata', function() {
+		self.duration = self.video.duration;
+	});
 };
 
 Video.prototype = new Emitter();
 
-function streamURLFromLocation(location) {
+function getStreamURLFromLocation(location) {
 	return location.replace(/^\/v\//gi, '/s/');
 }
 
