@@ -49,6 +49,8 @@ var Emitter = require('./proto/emitter.js');
 function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	var self = this;
 
+	this.viewElemDefaultOpacity = 0.8;
+
 	this.container = container;
 	this.view = viewElem;
 	this.input = inputElem;
@@ -129,6 +131,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	};
 
 	this.hideOverlay = function() {
+		this.view.style.opacity = this.viewElemDefaultOpacity;
 		this.overlay.style.display = 'none';
 	};
 
@@ -174,10 +177,19 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 				images[i].addEventListener('load', function(image, message) {
 					return function() {
 						checkImagesLoaded(message);
+						
+						image.style.cursor = 'pointer';
+						image.addEventListener('click', function() {
+							console.log('fuck', image.src);
+							window.open(image.src, '_blank');
+						});
+
 						var imageSpan = document.createElement('span');
 						imageSpan.className = 'full-size text-center block chat-container-view-message-image';
 						imageSpan.appendChild(image);
 						message.appendChild(imageSpan);
+
+						image.style.width = "100%";
 
 						if (images.length > 1) {
 							self.view.scrollTop += imageSpan.clientHeight;
