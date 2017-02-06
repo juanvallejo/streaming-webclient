@@ -194,8 +194,6 @@ function Socket(io) {
 	this.socket = io;
 	this.reservedAliases = [
 		'system',
-		'juan',
-		'alux'
 	];
 
 	this.addClient = function(client) {

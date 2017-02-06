@@ -806,4 +806,5 @@ function getStreamURLFromLocation(location) {
 }
 
 module.exports = Video;
+
 },{"./constants.js":3,"./proto/emitter.js":5}]},{},[4]);
