@@ -642,10 +642,23 @@ function addSocketCommands() {
 
 		if (args[0] == 'list') {
 			var users = [];
+			var nic_users = [];
+			var clients = socket.getClients();
 			for (var i = 0; i < socket.getSize(); i++) {
-				users.push(socket.getUsernameForClient(socket.getClients()[i]));
+				var c_user = socket.getUsernameForClient(clients[i]);
+
+				// a match here indicates that the user has not yet
+				// chosen a username. it is safe to assume that they
+				// have not yet joined the chat.
+				if (c_user == clients[i].id) {
+					nic_users.push('[Not in chat] ' + c_user);
+					continue;
+				}
+				users.push(c_user);
 			}
-			return 'All users in the chat:<br /><br />' + (users.join('<br />'));
+			return 'All users in the chat:<br /><br />' + (nic_users.join('<br />')) + 
+				(nic_users.length ? '<br />' : '') + 
+				(users.join('<br />'));
 		}
 
 		return this.getUsageText();
