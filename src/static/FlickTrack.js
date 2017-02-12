@@ -359,7 +359,7 @@ function App() {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
-	this.video = new VideoPlayer(document.createElement('video'));
+	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(window.location.origin);
 	this.banner = new Banner(document.getElementById("banner"));
 
@@ -612,10 +612,22 @@ function App() {
 
 	this.socket.on('info_subtitles', function(data) {
 		if (data.on && data.path) {
-			// addSubtitles(data.path);
+			self.video.addSubtitles(data.path, function(err) {
+				if(err) {
+					self.banner.showBanner('Unable to add subtitles track at this time: ' + err);
+					return;
+				}
+				self.banner.showBanner('Successfully added subtitles track.');
+			});
+
 			return;
 		}
-		// removeSubtitles();
+		self.video.removeSubtitles();
+		self.banner.showBanner('Subtitles off.');
+	});
+
+	this.video.on('subtitlesloaded', function() {
+		self.banner.showBanner('The subtitle track has loaded. Subtitles enabled.');
 	});
 
 	// add window event listeners
@@ -730,7 +742,7 @@ module.exports = Socket;
 var Cons = require('./constants.js');
 var Emitter = require('./proto/emitter.js');
 
-function Video(videoElement) {
+function Video(videoElement, sTrackElement) {
 	var self = this;
 
 	this.video = videoElement;
@@ -739,22 +751,64 @@ function Video(videoElement) {
 	this.sourceFileError = null;
 	this.alertShown = false;
 	this.canStartStream = false;
+	this.metadataLoaded = false;
+	this.subtitlesTrack = sTrackElement;
+	this.subtitlesTrackActivated = false;
 
-	this.on = function(e, fn) {
+	// ignores the actual HTMLEntity when adding
+	// an event listener to this wrapper object.
+	this.EVT_IGNORE_ELEM = true;
+
+	// handlers
+	this.defaultSubtitlesHandler = function(path, handler) { 
+		if (!handler || typeof handler != 'function') {
+			handler = function () {};
+		}
+		
+		if (!this.metadataLoaded) {
+			handler('Video metadata has not yet loaded, try again later.');
+			return false;
+		}
+
+		this.subtitlesTrack.src = path;
+		this.subtitlesTrack.mode = "showing";
+		this.video.textTracks[0].mode = "showing";
+		this.subtitlesTrackActivated = true;
+		
+	};
+
+	this.subtitlesHandler = this.defaultSubtitlesHandler;
+
+	this.on = function(e, fn, ignore_elem) {
 		if (!this.callbacks[e]) {
 			this.callbacks[e] = [];
 
-			this.video.addEventListener(e, (function(e) {
-				return function(args) {
-					self.emit(e, arguments);
-				}
-			})(e));
+			if(!ignore_elem) {
+				this.video.addEventListener(e, (function(e) {
+					return function(args) {
+						self.emit(e, arguments);
+					}
+				})(e));
+			}
 		}
 		this.callbacks[e].push(fn);
 	};
 
 	this.init = function(location, videoElement) {
 		this.video.src = getStreamURLFromLocation(location.pathname);
+		this.video.crossorigin = "anonymous";
+
+		this.subtitlesTrack.kind = "captions";
+		this.subtitlesTrack.label = "English";
+		this.subtitlesTrack.srclang = "en";
+
+		this.video.appendChild(this.subtitlesTrack);
+
+		this.subtitlesTrack.addEventListener('load', function() {
+			this.mode = "showing";
+			self.video.textTracks[0].mode = "showing";
+			self.emit('subtitlesloaded');
+		});
 	};
 
 	this.appendTo = function(parent) {
@@ -797,6 +851,15 @@ function Video(videoElement) {
 		});
 	};
 
+	this.addSubtitles = function(path, callback) {
+		return this.subtitlesHandler(path, callback);
+	};
+
+	this.removeSubtitles = function() {
+		this.subtitlesTrack.mode = "hidden";
+		this.video.textTracks[0].mode = "hidden";	
+	};
+
 	this.getVideo = function() {
 		return this.video;
 	};
@@ -808,6 +871,7 @@ function Video(videoElement) {
 	// add event listeners
 	this.on('loadedmetadata', function() {
 		self.duration = self.video.duration;
+		self.metadataLoaded = true;
 	});
 };
 

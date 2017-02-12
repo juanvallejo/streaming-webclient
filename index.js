@@ -11,7 +11,8 @@ const APP_HOST = '0.0.0.0';
 const BASE_DIR = __dirname + '/src/static/'
 const INDEX_FILE = __dirname + '/src/static/index.html';
 const SRC_ROOT = __dirname + '/videos';
-const SUBS_ROOT = __dirname + '/src/static/subtitles';
+const SUBS_ROOT_RELATIVE = '/src/static/subtitles';
+const SUBS_ROOT = __dirname + SUBS_ROOT_RELATIVE;
 const VALID_VIDEO_EXTS = [
 	'mp4',
 	'avi'
@@ -30,7 +31,8 @@ var mimeType = {
 	'avi': 'video/avi',
 	'pl': 'text/plain',
 	'png': 'image/png',
-	'srt': 'text/plain',
+	'srt': 'text/srt',
+	'vtt': 'text/vtt',
 	'txt': 'text/plain'
 };
 
@@ -584,30 +586,32 @@ function addSocketCommands() {
 
 		// subtitles handler
 		if (args[0] == 'subtitles') {
-			return 'This command does not yet work on your browser.';
 			if (!data || !data.location) {
-				return 'The client sent incomplete command data.';
+				return 'The client sent incomplete data for this command.';
 			}
 			if (!args[1] || (args[1] != 'on' && args[1] != 'off')) {
 				return convertHTMLEntities('This sub-command only takes "on" or "off" as arguments.');
 			}
 			if (args[1] == 'on') {
-				var sfile = (data.location.pathname.replace(/^\/v\//gi, '')) + '.srt';
+				var sfile = (data.location.pathname.replace(/^\/v\//gi, '')).split('.');
+				sfile.splice(sfile.length - 1,1)
+				sfile = sfile.join('.') + '.vtt';
+
 				fs.stat(SUBS_ROOT + '/' + sfile, function(err, stats) {
 					if (err) {
 						if (err.code === 'ENOENT') {
-							socket.broadcastSystemMessageTo(client, 'Error loading subtitles file.');
+							socket.broadcastSystemMessageTo(client, 'Error, the subtitle track for this video is missing.');
 							return;
 						}
-						socket.broadcastSystemMessageTo(client, 'Unexpected error loading subtitles file.');
+						socket.broadcastSystemMessageTo(client, 'Unexpected error loading subtitles file: ' + err.toString());
 						return;
 					}
 					socket.broadcastTo(client, 'info_subtitles', {
-						path: '/static/subtitles/' + sfile,
+						path: SUBS_ROOT_RELATIVE + '/' + sfile,
 						on: true
 					});
 				});
-				return 'Attempting add subtitles to your stream...';
+				return 'Attempting to add subtitles to your stream...';
 			}
 
 			socket.broadcastTo(client, 'info_subtitles', {
@@ -963,10 +967,14 @@ function streamFileHandler(req, res, fileFragment) {
 }
 
 function isVideoFile(extension) {
-	if (mimeType.hasOwnProperty(extension)) {
+	if (mimeType.hasOwnProperty(extension) && isVideoFileExtension(extension)) {
 		return true;
 	}
 	return false;
+}
+
+function isVideoFileExtension(extension) {
+	return isStreamFileExtensionValid(extension);
 }
 
 // handle /video/* paths

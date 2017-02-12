@@ -24,7 +24,7 @@ function App() {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
-	this.video = new VideoPlayer(document.createElement('video'));
+	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(window.location.origin);
 	this.banner = new Banner(document.getElementById("banner"));
 
@@ -277,10 +277,22 @@ function App() {
 
 	this.socket.on('info_subtitles', function(data) {
 		if (data.on && data.path) {
-			// addSubtitles(data.path);
+			self.video.addSubtitles(data.path, function(err) {
+				if(err) {
+					self.banner.showBanner('Unable to add subtitles track at this time: ' + err);
+					return;
+				}
+				self.banner.showBanner('Successfully added subtitles track.');
+			});
+
 			return;
 		}
-		// removeSubtitles();
+		self.video.removeSubtitles();
+		self.banner.showBanner('Subtitles off.');
+	});
+
+	this.video.on('subtitlesloaded', function() {
+		self.banner.showBanner('The subtitle track has loaded. Subtitles enabled.');
 	});
 
 	// add window event listeners
