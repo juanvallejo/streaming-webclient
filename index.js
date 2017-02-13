@@ -374,6 +374,10 @@ function Socket(io) {
 		return this.clientAliases[client.id][1] || this.clientAliases[client.id][0] || client.id;
 	};
 
+	this.getUsernameForClientId = function(clientId) {
+		return this.getUsernameForClient({id: clientId});	
+	};
+
 	// updates the clien's current alias
 	this.updateUsernameForClient = function(client, data) {
 		var username = data.user;
@@ -413,6 +417,12 @@ function Socket(io) {
 
 		this.clientAliases[client.id][0] = this.clientAliases[client.id][1] || 'Anonymous';
 		this.clientAliases[client.id][1] = data.user;
+
+		// update "playback.startedBy"
+		if(playback.startedBy && playback.startedBy == this.clientAliases[client.id][0]) {
+			console.log('INFO', 'client with updated username (' + data.user + ') started stream. Updating...');
+			playback.startedBy = data.user;
+		}
 
 		return true;
 	};
@@ -545,7 +555,7 @@ function addSocketCommands() {
 	socket.registerCommand(helpCmd);
 
 	var streamCmd = new SocketCommand('stream', 'controls the stream playback (pause|play|stop)');
-	streamCmd.usage = 'Usage: /stream (pause|play|stop|subtitles <on|off>)';
+	streamCmd.usage = 'Usage: /stream (pause|play|stop|reset|subtitles <on|off>|info|skip <seconds>)';
 	streamCmd.run = function(socket, client, args, data) {
 		if (!args.length) {
 			return this.getUsageText();
@@ -620,6 +630,30 @@ function addSocketCommands() {
 				on: false
 			});
 			return 'Subtitles have been turned off for your stream.';
+		}
+
+		if (args[0] == 'skip') {
+			if (!args[1]) {
+				return 'You must specify a time (in seconds) to skip to.'
+			}
+
+			// set new timer value and force a streamsync on all clients
+			playback.setTimer(parseInt(args[1]));
+			socket.emit('request_streamsync', [client, {}]);
+
+			return 'Skipping the stream to "' + args[1] + '" seconds for all clients.';
+		}
+
+		if (args[0] == 'info') {
+			var sinfo = 'Stream Info:<br />';
+			var status = playback.getStatus();
+			status.startedBy = socket.getUsernameForClientId(status.startedBy);
+
+			for(var i in status) {
+				sinfo += '<br /><span class="text-hl-name">' + i + '</span>: ' + status[i];
+			}
+
+			return sinfo;
 		}
 
 		return this.getUsageText();
@@ -881,6 +915,15 @@ io.listen(app).on('connection', function(client) {
 			id: client.id,
 			user: username
 		});
+
+		// if playback.startedBy user started stream after "updating" username,
+		// the value stored in playback.startedBy by this point will still be
+		// that client's id. Ensure that it is updated to its actual alias.
+		if(playback.startedBy && playback.startedBy == client.id) {
+			console.log('INFO', 'playback.startedBy matched departing client ID. Updating playback.startedBy to alias of the departing client.');
+			playback.startedBy = socket.getUsernameForClient(client);
+		}
+
 		socket.broadcastSystemMessageFrom(client, username + ' has left the stream.');
 		socket.removeClient(client);
 	});
