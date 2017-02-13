@@ -363,7 +363,8 @@ function Socket(io) {
 		if (!this.clientAliases[client.id]) {
 			return client.id;
 		}
-		return this.clientAliases[client.id][0];
+		var aliases = this.clientAliases[client.id];
+		return aliases[aliases.length - 1];
 	};
 
 	this.getUsernameForClient = function(client) {
@@ -600,7 +601,7 @@ function addSocketCommands() {
 				fs.stat(SUBS_ROOT + '/' + sfile, function(err, stats) {
 					if (err) {
 						if (err.code === 'ENOENT') {
-							socket.broadcastSystemMessageTo(client, 'Error, the subtitle track for this video is missing.');
+							socket.broadcastSystemMessageTo(client, 'error: the subtitle track for this video is missing.');
 							return;
 						}
 						socket.broadcastSystemMessageTo(client, 'Unexpected error loading subtitles file: ' + err.toString());
@@ -698,6 +699,10 @@ function addSocketEvents() {
 	socket.on('request_beginstream', function(client, data) {
 		console.log('INFO client', client.id, 'requested to begin the stream');
 
+		if(playback.isStarted) {
+			return console.log('INFO REQUEST_REJECT CLIENT', client.id, 'denied motion to begin stream. Stream already in progress for other clients.');
+		}
+
 		// if client sent saved timer, only broadcast to that client.
 		// chances are that every separate client will request this.
 		if (data && data.timer) {
@@ -760,7 +765,8 @@ function addSocketEvents() {
 		socket.broadcastAll(client, 'info_updateusername', {
 			id: client.id,
 			user: data.user,
-			oldUser: oldUsername
+			oldUser: oldUsername,
+			isNewUser: oldUsername == client.id
 		});
 	});
 }

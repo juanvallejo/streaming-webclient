@@ -17,7 +17,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	this.width = container.clientWidth;
 	this.height = container.clientHeight;
 	this.timeout = null;
-	this.chatHideDelay = 1000;
+	this.chatHideDelay = 2000;
 	this.hasMouseOver = false;
 	this.isRegistered = false;
 	this.user = 'Anonymous';

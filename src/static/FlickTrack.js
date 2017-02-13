@@ -59,7 +59,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	this.width = container.clientWidth;
 	this.height = container.clientHeight;
 	this.timeout = null;
-	this.chatHideDelay = 1000;
+	this.chatHideDelay = 2000;
 	this.hasMouseOver = false;
 	this.isRegistered = false;
 	this.user = 'Anonymous';
@@ -445,6 +445,10 @@ function App() {
 	// register socket events
 	this.socket.on('connect', function() {
 		if (self.video.savedTimer) {
+			// TODO: it would be ideal to have the clickable overlay
+			// at the begining of a stopped stream resume using this
+			// timer, not have the server auto-play once connection
+			// is re-established after a connection lost.
 			self.socket.send('request_beginstream', {
 				timer: self.video.savedTimer
 			});
@@ -486,6 +490,9 @@ function App() {
 	this.socket.on('info_updateusername', function(data) {
 		if (data.user == self.localStorage.username || data.oldUser == self.localStorage.username) {
 			return self.banner.showBanner('<span class="text-hl-name">You</span> are now known as ' + data.user);
+		}
+		if(data.isNewUser) {
+			return self.banner.showBanner('<span class="text-hl-name">' + data.user + '</span> has joined the chat.');
 		}
 		self.banner.showBanner('<span class="text-hl-name">' + (data.oldUser || 'Anonymous (' + (data.id || 'unknown id') + ')') + '</span> is now known as ' + data.user);
 	});
