@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300');
+@import url('https://fonts.googleapis.com/css?family=Raleway');
+@import url('https://fonts.googleapis.com/css?family=Dancing+Script');
+
+body {
+	background: rgb(18,17,26);
+	font-size: 16px;
+}
+
+.header {
+	background: transparent;
+	display: inline-block;
+	height:250px;
+	max-height: 50%;
+	min-height: 200px;
+	width: 100%;
+}
+	#brand {
+		background: transparent;
+		color: white;
+		display: table;
+		font: 400 4em 'Open Sans Condensed', 'Dancing Script', Helvetica;
+		height: 100%;
+		text-align: center;
+		width: 100%;
+	}
+		.logo {
+			background: transparent;
+			display: table-cell;
+			vertical-align: middle;
+			width: 100%;
+		}
+
+.body {
+	background: transparent;
+	display: inline-block;
+	height: 100%;
+	min-height: 270px;
+	width: 100%;
+}
+	.body .row {
+		background: inherit;
+		display: inline-block;
+		height: 100%;
+		margin: 0 0 50px 0;
+		max-height: 300px;
+		min-height: inherit;
+		overflow-x: hidden;
+		overflow-y: hidden;
+		width: inherit;
+	}
+		.body .row .container {
+			background: inherit;
+			display: inline-block;
+			height: inherit;
+			max-height: inherit;
+			min-height: inherit;
+			padding-left: 10px;
+			overflow-y: inherit;
+			width: 1000%;
+		}
+			.body .row .container .item {
+				background: green;
+				display: inline-block;
+				height: inherit;
+				max-height: inherit;
+				min-height: inherit;
+				margin: 0 10px 0 10px;
+				max-width: 167px;
+				min-width: 200px;
+				text-align: center;
+				width: 20%;
+			}
+
+.item img {
+	display: block;
+	height: 100%;
+	width: 100%;
+	z-index:-999;
+}
