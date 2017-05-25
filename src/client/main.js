@@ -8,7 +8,13 @@ var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
 var Socket = require('./socket.js');
 
-function App() {
+// attempts to build a socket connection url using
+// hostname constants. Defaults to window.location.hostname
+function getSocketAddr(window) {
+	return (Cons.DEFAULT_SOCKET_PROTO + '://' + window.location.hostname + ':' + Cons.DEFAULT_SOCKET_PORT + Cons.DEFAULT_SOCKET_PATH) || window.location.origin;
+}
+
+function App(window, document) {
 	var self = this;
 
 	this.localStorage = window.localStorage;
@@ -25,7 +31,7 @@ function App() {
 		document.getElementById('chat-container-overlay'));
 
 	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
-	this.socket = new Socket(window.location.origin);
+	this.socket = new Socket(getSocketAddr(window));
 	this.banner = new Banner(document.getElementById("banner"));
 
 	// set application states
@@ -144,41 +150,51 @@ function App() {
 	});
 
 	this.socket.on('updateusername', function(data) {
+		data = parseSockData(data);
 		self.localStorage.username = data.user;
 		self.chat.register(data.user);
 		if (!self.chat.isHidden()) {
 			self.chat.focusInput();
 		}
 		self.chat.hideOverlay();
+
+		self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
 	});
 
 	this.socket.on('info_updateusername', function(data) {
-		if (data.user == self.localStorage.username || data.oldUser == self.localStorage.username) {
+		data = parseSockData(data);
+		if (data.user == self.localStorage.username || (data.extra && data.extra.oldUser == self.localStorage.username)) {
 			return self.banner.showBanner('<span class="text-hl-name">You</span> are now known as ' + data.user);
 		}
-		if(data.isNewUser) {
+		if(data.extra && data.extra.isNewUser) {
 			return self.banner.showBanner('<span class="text-hl-name">' + data.user + '</span> has joined the chat.');
 		}
-		self.banner.showBanner('<span class="text-hl-name">' + (data.oldUser || 'Anonymous (' + (data.id || 'unknown id') + ')') + '</span> is now known as ' + data.user);
+		self.banner.showBanner('<span class="text-hl-name">' + ((data.extra && data.extra.oldUser) || 'Anonymous (' + (data.id || 'unknown id') + ')') + '</span> is now known as ' + data.user);
 	});
 
 	this.socket.on('beginstream', function(data) {
+		data = parseSockData(data);
 		self.video.canStartStream = false;
 		self.video.play(data.timer);
 		$(self.overlay).hide();
 	});
 
 	this.socket.on('chatmethodaction', function(data) {
-		if (typeof self.chat[data.method] != 'function') {
-			self.banner.showBanner('Warning: The server has requested an invalid action (' + data.method + ') to be performed.');
-			console.log('Warning: The server requested an invalid action (' + data.method + ') from the chat handler. Possible incompatible version of the server being used.');
+		data = parseSockData(data);
+		if (!data.extra) {
+			return;
+		}
+		if (typeof self.chat[data.extra.methodname] !== 'function') {
+			self.banner.showBanner('Warning: The server has requested an invalid action (' + data.extra.methodname + ') to be performed.');
+			console.log('Warning: The server requested an invalid action (' + data.extra.methodname + ') from the chat handler. Possible incompatible version of the server being used.');
 			return;
 		}
 
-		self.chat[data.method].apply(self.chat, data.args);
+		self.chat[data.extra.methodname].apply(self.chat, data.extra.args || []);
 	});
 
 	this.socket.on('chatmessage', function(data) {
+		data = parseSockData(data);
 		if (self.chat.isRegistered) {
 			self.chat.show();
 		}
@@ -186,6 +202,7 @@ function App() {
 	});
 
 	this.socket.on('streamsync', function(data) {
+		data = parseSockData(data);
 		console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
 
 		self.video.canStartStream = false;
@@ -267,14 +284,17 @@ function App() {
 	});
 
 	this.socket.on('info_clienterror', function(data) {
+		data = parseSockData(data);
 		self.banner.showBanner(data.error);
 	});
 
 	this.socket.on('info_clientjoined', function(data) {
+		data = parseSockData(data);
 		self.banner.showBanner('client <span class="text-hl-name">' + data.id + '</span> has joined the stream.');
 	});
 
 	this.socket.on('info_clientleft', function(data) {
+		data = parseSockData(data);
 		self.banner.showBanner('client <span class="text-hl-name">' + (data.user || data.id) + '</span> has left the stream.');
 	});
 
@@ -283,6 +303,7 @@ function App() {
 	});
 
 	this.socket.on('info_subtitles', function(data) {
+		data = parseSockData(data);
 		if (data.on && data.path) {
 			self.video.addSubtitles(data.path, function(err) {
 				if(err) {
@@ -338,5 +359,13 @@ function App() {
 	});
 }
 
-// make entry point visible to the rest of the document
+function parseSockData(b64) {
+	if (typeof b64 !== "string") {
+		return b64;
+	}
+
+	var str = atob(b64);
+	return JSON.parse(str);
+}
+
 window.App = App;

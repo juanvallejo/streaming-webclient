@@ -4,8 +4,8 @@
 	<meta charset="utf-8" />
 	<title>FlickTrack</title>
 	<link rel="stylesheet" href="/src/static/reset.css" />
-	<script src="/socket.io/socket.io.js"></script>
-	<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+	<script src="http://localhost:8080/static/socket.io.js"></script>
+	<script src="http://localhost:8000/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
 <style>
 @import url('https://fonts.googleapis.com/css?family=Questrial');
 #overlay {
@@ -165,41 +165,10 @@ video {
 			</div>
 		</div>
 </div>
-<!-- <iframe id="yt-video"
-        width="640" height="360"
-        src="https://www.youtube.com/embed/M7lc1UVf-VE?enablejsapi=1"
-        frameborder="0"
-        style="border: solid 4px #37474F"
-></iframe> -->
 <script src="/src/static/FlickTrack.js"></script>
 <script>
-// var ytplayer = new YTPlayer();
-
-var app = new App();
+var app = new App(window, document);
 app.init();
-
-// handle youtube video scripts
-// var tag = document.createElement('script');
-// tag.id = 'iframe-demo';
-// tag.src = 'https://www.youtube.com/iframe_api';
-// var firstScriptTag = document.getElementsByTagName('script')[0];
-// firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-// var player;
-// function onYouTubeIframeAPIReady() {
-// 	player = new YT.Player('yt-video', {
-// 		events: {
-// 			'onReady': onPlayerReady,
-// 			'onStateChange': onPlayerStateChange
-// 		}
-// 	});
-// }
-// function onPlayerReady(controller) {
-// 	// controller.target.playVideo();
-// }
-// function onPlayerStateChange(event) {
-
-// }
 </script>
 </body>
 </html>

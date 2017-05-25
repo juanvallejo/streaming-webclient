@@ -244,7 +244,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 				if (!this.input.value) {
 					break;
 				}
-				self.emit('submit', [(localStorage.username || chat.getUsername()), self.input.value]);
+				self.emit('submit', [(localStorage.username || self.getUsername()), self.input.value]);
 				break;
 		}
 	};

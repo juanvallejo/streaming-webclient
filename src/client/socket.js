@@ -30,6 +30,10 @@ function Socket(url) {
 	this.send = function(netEvtName, data) {
 		this.socket.emit(netEvtName, data);
 	};
+
+	this.getSocket = function() {
+		return this.socket;
+	};
 };
 
 Socket.prototype = new Emitter();
