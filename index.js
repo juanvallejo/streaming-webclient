@@ -4,7 +4,6 @@
 
 var fs = require('fs');
 var http = require('http');
-var io = require('socket.io');
 
 const APP_PORT = '8000';
 const APP_HOST = '0.0.0.0';
@@ -869,65 +868,65 @@ var app = http.createServer(function(req, res) {
 console.log('INFO', 'Listening on port', APP_PORT);
 app.listen(APP_PORT);
 
-io.listen(app).on('connection', function(client) {
-	if (!socket) {
-		socket = new Socket(io);
-		socket.initGC();
-		addSocketEvents();
-		addSocketCommands();
-	}
-	if (!playback) {
-		playback = new Playback();
-	}
+// io.listen(app).on('connection', function(client) {
+// 	if (!socket) {
+// 		socket = new Socket(io);
+// 		socket.initGC();
+// 		addSocketEvents();
+// 		addSocketCommands();
+// 	}
+// 	if (!playback) {
+// 		playback = new Playback();
+// 	}
 
-	console.log('INFO', 'client has connected', client.id, (socket.getSize() + 1), 'total clients.');
-	socket.addClient(client);
-	socket.broadcastFrom(client, 'info_clientjoined', {
-		id: client.id
-	});
+// 	console.log('INFO', 'client has connected', client.id, (socket.getSize() + 1), 'total clients.');
+// 	socket.addClient(client);
+// 	socket.broadcastFrom(client, 'info_clientjoined', {
+// 		id: client.id
+// 	});
 
-	socket.emit('request_streamsync', [client, {}]);
+// 	socket.emit('request_streamsync', [client, {}]);
 
-	client.on('request_beginstream', function(data) {
-		socket.emit('request_beginstream', [client, data]);
-	});
+// 	client.on('request_beginstream', function(data) {
+// 		socket.emit('request_beginstream', [client, data]);
+// 	});
 
-	client.on('request_streamsync', function() {
-		socket.emit('request_streamsync', [client]);
-	});
+// 	client.on('request_streamsync', function() {
+// 		socket.emit('request_streamsync', [client]);
+// 	});
 
-	client.on('request_chatmessage', function(data) {
-		socket.emit('request_chatmessage', [client, data]);
-	});
+// 	client.on('request_chatmessage', function(data) {
+// 		socket.emit('request_chatmessage', [client, data]);
+// 	});
 
-	client.on('system_ping', function() {
-		socket.emit('system_ping', [client]);
-	});
+// 	client.on('system_ping', function() {
+// 		socket.emit('system_ping', [client]);
+// 	});
 
-	client.on('request_updateusername', function(data) {
-		socket.emit('request_updateusername', [client, data]);
-	});
+// 	client.on('request_updateusername', function(data) {
+// 		socket.emit('request_updateusername', [client, data]);
+// 	});
 
-	client.on('disconnect', function() {
-		console.log('INFO', client.id + ' (' + (socket.getUsernameForClient(client)) + ')', 'has disconnected');
-		var username = socket.getUsernameForClient(client);
-		socket.broadcastAll(null, 'info_clientleft', {
-			id: client.id,
-			user: username
-		});
+// 	client.on('disconnect', function() {
+// 		console.log('INFO', client.id + ' (' + (socket.getUsernameForClient(client)) + ')', 'has disconnected');
+// 		var username = socket.getUsernameForClient(client);
+// 		socket.broadcastAll(null, 'info_clientleft', {
+// 			id: client.id,
+// 			user: username
+// 		});
 
-		// if playback.startedBy user started stream after "updating" username,
-		// the value stored in playback.startedBy by this point will still be
-		// that client's id. Ensure that it is updated to its actual alias.
-		if(playback.startedBy && playback.startedBy == client.id) {
-			console.log('INFO', 'playback.startedBy matched departing client ID. Updating playback.startedBy to alias of the departing client.');
-			playback.startedBy = socket.getUsernameForClient(client);
-		}
+// 		// if playback.startedBy user started stream after "updating" username,
+// 		// the value stored in playback.startedBy by this point will still be
+// 		// that client's id. Ensure that it is updated to its actual alias.
+// 		if(playback.startedBy && playback.startedBy == client.id) {
+// 			console.log('INFO', 'playback.startedBy matched departing client ID. Updating playback.startedBy to alias of the departing client.');
+// 			playback.startedBy = socket.getUsernameForClient(client);
+// 		}
 
-		socket.broadcastSystemMessageFrom(client, username + ' has left the stream.');
-		socket.removeClient(client);
-	});
-});
+// 		socket.broadcastSystemMessageFrom(client, username + ' has left the stream.');
+// 		socket.removeClient(client);
+// 	});
+// });
 
 function staticHandler(req, res) {
 	var file = req.url;

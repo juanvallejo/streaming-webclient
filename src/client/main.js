@@ -45,6 +45,7 @@ function App(window, document) {
 
 		// if username already stored, set as current username
 		if (this.localStorage.username) {
+			this.chat.lockOverlay("Loading, please wait...");
 			this.socket.send('request_updateusername', {
 				user: localStorage.username
 			});
@@ -157,6 +158,7 @@ function App(window, document) {
 			self.chat.focusInput();
 		}
 		self.chat.hideOverlay();
+		self.chat.unlockOverlay();
 
 		self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
 	});
@@ -195,6 +197,7 @@ function App(window, document) {
 
 	this.socket.on('chatmessage', function(data) {
 		data = parseSockData(data);
+		self.chat.unlockOverlay()
 		if (self.chat.isRegistered) {
 			self.chat.show();
 		}
@@ -285,6 +288,7 @@ function App(window, document) {
 
 	this.socket.on('info_clienterror', function(data) {
 		data = parseSockData(data);
+		self.chat.unlockOverlay();
 		self.banner.showBanner(data.error);
 	});
 

@@ -93,6 +93,16 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		this.overlay.style.display = 'none';
 	};
 
+	this.lockOverlay = function(message) {
+		this.usernameInput.value = message;
+		this.usernameInput.disabled = true;
+	};
+
+	this.unlockOverlay = function() {
+		this.usernameInput.value = '';
+		this.usernameInput.removeAttribute("disabled");
+	}
+
 	this.isHidden = function() {
 		return this.hidden;
 	};
