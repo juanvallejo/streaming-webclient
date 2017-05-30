@@ -257,8 +257,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		this.clearInput();
 		socket.send('request_chatmessage', {
 			user: sender,
-			message: text,
-			location: window.location
+			message: text
 		});
 	};
 
@@ -342,7 +341,11 @@ var Constants = {
 	DEFAULT_SOCKET_PROTO: 'http',
 	DEFAULT_SOCKET_PATH: '',
 	DEFAULT_SOCKET_HOST: 'localhost',
-	DEFAULT_SOCKET_PORT: 8080
+	DEFAULT_SOCKET_PORT: 8080,
+
+	STREAM_KIND_YOUTUBE: 'youtube',
+	STREAM_KIND_LOCAL: 'movie',
+	STREAM_KIND_TWITCH: 'twitch'
 };
 
 module.exports = Constants;
@@ -355,6 +358,7 @@ var Banner = require('./banner.js');
 var Chat = require('./chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
+var YouTubeVideoPlayer = require('./ytvideo.js');
 var Socket = require('./socket.js');
 
 // attempts to build a socket connection url using
@@ -371,7 +375,6 @@ function App(window, document) {
 	this.overlay = document.getElementById("overlay");
 	this.out = document.getElementById("out");
 	this.outTimeout = null;
-	this.ytvideo = document.getElementById('yt-video');
 
 	this.chat = new Chat(document.getElementById('chat-container'),
 		document.getElementById('chat-container-view'),
@@ -379,6 +382,7 @@ function App(window, document) {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
+	this.ytVideo = new YouTubeVideoPlayer(document.createElement('iframe'));
 	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(getSocketAddr(window));
 	this.banner = new Banner(document.getElementById("banner"));
@@ -391,6 +395,9 @@ function App(window, document) {
 	// and its sub-components
 	this.init = function() {
 		this.chat.hide(true);
+
+		this.out.innerHTML = "Welcome.<br />Load a video with <span class='text-hl-name'>/stream load &lt;url&gt;</span>"
+		this.out.innerHTML += "<br />Type <span class='text-hl-name'>/help</span> for available options."
 
 		// if username already stored, set as current username
 		if (this.localStorage.username) {
@@ -413,9 +420,9 @@ function App(window, document) {
 
 		this.video.on('error', function(err) {
 			if (err.target.error.code == Cons.ERR_CODE_VID_NOTFOUND) {
-				self.out.innerHTML = 'The video file <span class="text-hl-name">' + (window.location.pathname.replace(/\/v\//gi, '')) + '</span> could not be found.';
+				self.out.innerHTML = 'The video file <span class="text-hl-name">' + self.video.getVideo().src.split("/s/")[1] + '</span> could not be loaded.';
 			} else {
-				self.out.innerHTML = 'Unexpectd error occurred while receiving video data.';
+				self.out.innerHTML = 'Unexpected error occurred while receiving video data.';
 			}
 
 			self.video.sourceFileError = true;
@@ -433,6 +440,7 @@ function App(window, document) {
 				user: username
 			});
 			self.chat.usernameInput.value = '';
+            this.lockOverlay("loading, please wait...");
 		});
 
 		this.chat.on('info', function(text, persist) {
@@ -526,7 +534,7 @@ function App(window, document) {
 	this.socket.on('beginstream', function(data) {
 		data = parseSockData(data);
 		self.video.canStartStream = false;
-		self.video.play(data.timer);
+		self.video.play(data.extra.timer);
 		$(self.overlay).hide();
 	});
 
@@ -553,6 +561,16 @@ function App(window, document) {
 		self.chat.addMessage(data);
 	});
 
+	this.socket.on("streamload", function(data) {
+		data = parseSockData(data)
+		if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
+			self.ytVideo.load(data.extra.url);
+		} else if (data.extra.kind == Cons.STREAM_KIND_LOCAL) {
+			self.video.load(data.extra.url);
+		}
+		console.log("GOT STREAMLOAD DATA", data);
+	});
+
 	this.socket.on('streamsync', function(data) {
 		data = parseSockData(data);
 		console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
@@ -565,30 +583,30 @@ function App(window, document) {
 			isNewClient = true;
 		}
 
-		if (Math.abs(parseInt(data.playback.timer) - parseInt(self.video.getTime())) > 10 && !data.playback.isPaused) {
-			if (data.playback.timer == 1) {
+		if (Math.abs(parseInt(data.extra.timer) - parseInt(self.video.getTime())) > 10 && !data.extra.isPaused) {
+			if (data.extra.timer == 1) {
 				self.banner.showBanner('Resetting stream, please wait...');
-			} else if (parseInt(data.playback.timer) - parseInt(self.video.getTime()) <= 0) {
+			} else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
 				self.banner.showBanner('Rewinding stream, please wait...');
 			} else {
 				self.banner.showBanner('Video stream lag detected. Syncing your stream...');
 			}
 		}
 
-		self.video.setTime(data.playback.timer);
+		self.video.setTime(data.extra.timer);
 
 		// safari bug fix - currentTime will not take
 		// effect until a second afterthe page has loaded
 		if (!self.video.getTime()) {
 			setTimeout(function() {
-				self.video.setTime(data.playback.timer + 1);
+				self.video.setTime(data.extra.timer + 1);
 			}, 1000);
 		}
 
-		if (data.playback.isPaused) {
+		if (!data.extra.isPlaying) {
 			self.video.pause();
 
-			if (!data.playback.isStarted) {
+			if (data.extra.isStopped) {
 				if(self.video.sourceFileError) {
 					console.log('FATAL', 'Detected source file error, preventing stream from starting.');
 					return;
@@ -612,7 +630,7 @@ function App(window, document) {
 		self.hideOutput();
 
 		// handle video end
-		if (self.video.getDuration() && data.playback.timer > self.video.getDuration()) {
+		if (self.video.getDuration() && data.extra.timer > self.video.getDuration()) {
 			self.chat.sendText(self.socket, 'system', '/stream stop');
 			
 			if (isNewClient) {
@@ -625,8 +643,8 @@ function App(window, document) {
 		}
 
 		if(isNewClient) {
-			if (data.playback.startedBy) {
-				self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.playback.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+			if (data.extra.startedBy) {
+				self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.extra.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
 			} else {
 				self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
 			}
@@ -657,8 +675,8 @@ function App(window, document) {
 
 	this.socket.on('info_subtitles', function(data) {
 		data = parseSockData(data);
-		if (data.on && data.path) {
-			self.video.addSubtitles(data.path, function(err) {
+		if (data.extra.on && data.extra.path) {
+			self.video.addSubtitles(data.extra.path, function(err) {
 				if(err) {
 					self.banner.showBanner('Unable to add subtitles track at this time: ' + err);
 					return;
@@ -722,7 +740,7 @@ function parseSockData(b64) {
 }
 
 window.App = App;
-},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./socket.js":6,"./video.js":7}],5:[function(require,module,exports){
+},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./socket.js":6,"./video.js":7,"./ytvideo.js":8}],5:[function(require,module,exports){
 /**
  * Emitter prototype for objects that send and receive events
  */
@@ -853,7 +871,7 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		this.video.src = getStreamURLFromLocation(location.pathname);
+		// this.video.src = getStreamURLFromLocation(location.pathname);
 		this.video.crossorigin = "anonymous";
 
 		this.subtitlesTrack.kind = "captions";
@@ -871,6 +889,10 @@ function Video(videoElement, sTrackElement) {
 
 	this.appendTo = function(parent) {
 		parent.appendChild(this.video);
+	};
+
+	this.load = function(filepath) {
+		this.video.src = "/s/" + filepath
 	};
 
 	this.play = function(time) {
@@ -940,5 +962,127 @@ function getStreamURLFromLocation(location) {
 }
 
 module.exports = Video;
+
+},{"./constants.js":3,"./proto/emitter.js":5}],8:[function(require,module,exports){
+/**
+ * handles local video streaming
+ */
+
+var Cons = require('./constants.js');
+var Emitter = require('./proto/emitter.js');
+
+function YouTubeVideo(videoElement) {
+    var self = this;
+
+    this.video = videoElement;
+    this.duration = null;
+    this.savedTimer = null;
+    this.sourceFileError = null;
+    this.alertShown = false;
+    this.canStartStream = false;
+    this.metadataLoaded = false;
+
+    // ignores the actual HTMLEntity when adding
+    // an event listener to this wrapper object.
+    this.EVT_IGNORE_ELEM = true;
+
+    this.on = function(e, fn, ignore_elem) {
+        if (!this.callbacks[e]) {
+            this.callbacks[e] = [];
+
+            if(!ignore_elem) {
+                this.video.addEventListener(e, (function(e) {
+                    return function(args) {
+                        self.emit(e, arguments);
+                    }
+                })(e));
+            }
+        }
+        this.callbacks[e].push(fn);
+    };
+
+    this.init = function(location, videoElement) {
+        this.video.className = 'full-size block';
+        this.video.frameborder = "0";
+        this.video.allowfullscreen = true;
+    };
+
+    this.appendTo = function(parent) {
+        parent.appendChild(this.video);
+    };
+
+    this.load = function(url) {
+        this.video.src = videoURLToEmbeddable(url);
+    };
+
+    this.play = function(time) {
+        if (time) {
+            this.video.currentTime = time;
+        }
+        if (this.video.muted) {
+            console.log('WARN:', 'playing muted video...');
+        }
+        try {
+            this.video.play();
+        } catch(e) {
+            console.log('EXCEPT VIDEO PLAY', e);
+        }
+    };
+
+    this.pause = function() {
+        try {
+            this.video.pause();
+        } catch(e) {
+            console.log('EXCEPT VIDEO PAUSE', e);
+        }
+    };
+
+    this.setTime = function(time) {
+        this.video.currentTime = time;
+    };
+
+    this.getTime = function() {
+        return this.video.currentTime;
+    };
+
+    this.beginStream = function(socket) {
+        socket.send('request_beginstream', {
+            timer: self.savedTimer
+        });
+    };
+
+    this.getVideo = function() {
+        return this.video;
+    };
+
+    this.getDuration = function() {
+        return this.duration;
+    };
+
+    // add event listeners
+    this.on('loadedmetadata', function() {
+        self.duration = self.video.duration;
+        self.metadataLoaded = true;
+    });
+};
+
+YouTubeVideo.prototype = new Emitter();
+
+function videoURLToEmbeddable(link) {
+    var videoId = link;
+    if (link.match(/watch\?v\=/gi)) {
+        videoId = link.split("watch?v=")[1];
+    } else {
+        videoId = link.split('/');
+        videoId = videoId[videoId.length - 1];
+    }
+    return ('https://www.youtube.com/embed/' + videoId);
+};
+
+function getStreamURLFromLocation(location) {
+    return location.replace(/^\/v\//gi, '/s/');
+}
+
+module.exports = YouTubeVideo;
 
 },{"./constants.js":3,"./proto/emitter.js":5}]},{},[4]);

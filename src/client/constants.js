@@ -9,7 +9,11 @@ var Constants = {
 	DEFAULT_SOCKET_PROTO: 'http',
 	DEFAULT_SOCKET_PATH: '',
 	DEFAULT_SOCKET_HOST: 'localhost',
-	DEFAULT_SOCKET_PORT: 8080
+	DEFAULT_SOCKET_PORT: 8080,
+
+	STREAM_KIND_YOUTUBE: 'youtube',
+	STREAM_KIND_LOCAL: 'movie',
+	STREAM_KIND_TWITCH: 'twitch'
 };
 
 module.exports = Constants;

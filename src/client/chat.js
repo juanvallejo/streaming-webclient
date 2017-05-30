@@ -215,8 +215,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		this.clearInput();
 		socket.send('request_chatmessage', {
 			user: sender,
-			message: text,
-			location: window.location
+			message: text
 		});
 	};
 

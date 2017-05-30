@@ -58,7 +58,7 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.init = function(location, videoElement) {
-		this.video.src = getStreamURLFromLocation(location.pathname);
+		// this.video.src = getStreamURLFromLocation(location.pathname);
 		this.video.crossorigin = "anonymous";
 
 		this.subtitlesTrack.kind = "captions";
@@ -76,6 +76,10 @@ function Video(videoElement, sTrackElement) {
 
 	this.appendTo = function(parent) {
 		parent.appendChild(this.video);
+	};
+
+	this.load = function(filepath) {
+		this.video.src = "/s/" + filepath
 	};
 
 	this.play = function(time) {
