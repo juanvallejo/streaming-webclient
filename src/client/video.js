@@ -8,6 +8,8 @@ var Emitter = require('./proto/emitter.js');
 function Video(videoElement, sTrackElement) {
 	var self = this;
 
+	this.loadedData = null;
+	this.ytElem = null;
 	this.video = videoElement;
 	this.duration = null;
 	this.savedTimer = null;
@@ -57,8 +59,78 @@ function Video(videoElement, sTrackElement) {
 		this.callbacks[e].push(fn);
 	};
 
+	this.hidePlayer = function() {
+		this.video.style.display = 'none';
+	};
+
+	this.showPlayer = function() {
+		this.video.style.display = 'block';
+	};
+
+	this.hideYtPlayer = function() {
+		this.ytElem.style.display = 'none';
+	};
+
+	this.showYtPlayer = function() {
+        this.ytElem.style.display = 'block';
+	};
+
+	this.onYtPlayerReady = function(evt) {
+
+	};
+
+	this.onYtPlayerStateChange = function(evt) {
+
+	};
+
+	this.loadYtVideo = function(frame, videoId) {
+		frame.contentWindow.postMessage(JSON.stringify({
+			'event': 'command',
+			'func': 'loadVideoById',
+			'args': [videoId, 0, 'large']
+		}), "*")
+	};
+
+	this.seekYtVideo = function(frame, time) {
+		console.log("paring bfsd", time);
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'seekTo',
+            'args': [time, "true"]
+        }), "*")
+	};
+
+	this.playYtVideo = function(frame) {
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'playVideo',
+            'args': []
+        }), "*")
+	};
+
+    this.pauseYtVideo = function(frame) {
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'pauseVideo',
+            'args': []
+        }), "*")
+    };
+
+    this.initYtPlayer = function(YT, ytElem) {
+        this.ytPlayer = new YT.Player(ytElem, {
+            width: '100%',
+            height: '100%',
+            events: {
+                'onReady': self.onYtPlayerReady,
+                'onStateChange': self.onYtPlayerStateChange
+            }
+        });
+        this.ytElem = this.ytPlayer.getIframe();
+		this.hideYtPlayer();
+    };
+
 	this.init = function(location, videoElement) {
-		// this.video.src = getStreamURLFromLocation(location.pathname);
+		this.video.style.display = 'none';
 		this.video.crossorigin = "anonymous";
 
 		this.subtitlesTrack.kind = "captions";
@@ -78,11 +150,33 @@ function Video(videoElement, sTrackElement) {
 		parent.appendChild(this.video);
 	};
 
-	this.load = function(filepath) {
-		this.video.src = "/s/" + filepath
+	this.load = function(data) {
+		this.pause();
+
+		self.loadedData = data.extra;
+        if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.hidePlayer();
+            this.showYtPlayer();
+        	this.loadYtVideo(self.ytPlayer.getIframe(), youtubeVideoIdFromUrl(data.extra.url))
+			return;
+        }
+
+        this.hideYtPlayer();
+        this.showPlayer();
+		this.video.src = "/s/" + data.extra.url;
 	};
 
 	this.play = function(time) {
+		if (!self.loadedData) {
+			console.log("WARN:", 'attempt to play video with no data loaded.');
+			return;
+		}
+
+		if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+			this.playYtVideo(self.ytPlayer.getIframe());
+			return;
+		}
+
 		if (time) {
 			this.video.currentTime = time;
 		}
@@ -97,6 +191,16 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.pause = function() {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to pause video with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.pauseYtVideo(self.ytPlayer.getIframe());
+            return;
+        }
+
 		try {
 			this.video.pause();
 		} catch(e) {
@@ -105,6 +209,16 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.setTime = function(time) {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to pause video with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.seekYtVideo(self.ytPlayer.getIframe(), time);
+            return;
+        }
+
 		this.video.currentTime = time;
 	};
 
@@ -112,10 +226,11 @@ function Video(videoElement, sTrackElement) {
 		return this.video.currentTime;
 	};
 
-	this.beginStream = function(socket) {
-		socket.send('request_beginstream', {
-			timer: self.savedTimer
-		});
+	this.beginStream = function(socket, user) {
+        socket.send('request_chatmessage', {
+            user: user,
+            message: "/stream play"
+        });
 	};
 
 	this.addSubtitles = function(path, callback) {
@@ -146,6 +261,10 @@ Video.prototype = new Emitter();
 
 function getStreamURLFromLocation(location) {
 	return location.replace(/^\/v\//gi, '/s/');
+}
+
+function youtubeVideoIdFromUrl(url) {
+	return url.split("watch?v=")[1].split("&")[0]
 }
 
 module.exports = Video;

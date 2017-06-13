@@ -887,15 +887,15 @@ app.listen(APP_PORT);
 
 // 	socket.emit('request_streamsync', [client, {}]);
 
-// 	client.on('request_beginstream', function(data) {
+//[deprecated] 	client.on('request_beginstream', function(data) {
 // 		socket.emit('request_beginstream', [client, data]);
 // 	});
 
-// 	client.on('request_streamsync', function() {
+//[done] 	client.on('request_streamsync', function() {
 // 		socket.emit('request_streamsync', [client]);
 // 	});
 
-// 	client.on('request_chatmessage', function(data) {
+//[done] 	client.on('request_chatmessage', function(data) {
 // 		socket.emit('request_chatmessage', [client, data]);
 // 	});
 
@@ -903,11 +903,11 @@ app.listen(APP_PORT);
 // 		socket.emit('system_ping', [client]);
 // 	});
 
-// 	client.on('request_updateusername', function(data) {
+//[done] 	client.on('request_updateusername', function(data) {
 // 		socket.emit('request_updateusername', [client, data]);
 // 	});
 
-// 	client.on('disconnect', function() {
+//[done] 	client.on('disconnect', function() {
 // 		console.log('INFO', client.id + ' (' + (socket.getUsernameForClient(client)) + ')', 'has disconnected');
 // 		var username = socket.getUsernameForClient(client);
 // 		socket.broadcastAll(null, 'info_clientleft', {

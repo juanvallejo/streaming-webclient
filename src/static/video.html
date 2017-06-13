@@ -6,6 +6,8 @@
 	<link rel="stylesheet" href="/src/static/reset.css" />
 	<script src="http://localhost:8080/static/socket.io.js"></script>
 	<script src="http://localhost:8000/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+	<script src="/src/static/FlickTrack.js"></script>
+	<script src="https://www.youtube.com/iframe_api"></script>
 <style>
 @import url('https://fonts.googleapis.com/css?family=Questrial');
 #overlay {
@@ -137,7 +139,9 @@ body {
 	background: black;
 	z-index: 999;
 }
-video {
+video, #yt-video {
+	top: 0;
+	left: 0;
 	width: 100%;
 	height: 100%;
 	position: absolute;
@@ -166,10 +170,14 @@ video {
 			</div>
 		</div>
 </div>
-<script src="/src/static/FlickTrack.js"></script>
+<div id="yt-video"></div>
 <script>
 var app = new App(window, document);
 app.init();
+
+function onYouTubeIframeAPIReady() {
+    app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
+}
 </script>
 </body>
 </html>

@@ -6,7 +6,6 @@ var Banner = require('./banner.js');
 var Chat = require('./chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
-var YouTubeVideoPlayer = require('./ytvideo.js');
 var Socket = require('./socket.js');
 
 // attempts to build a socket connection url using
@@ -30,7 +29,6 @@ function App(window, document) {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
-	this.ytVideo = new YouTubeVideoPlayer(document.createElement('iframe'));
 	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(getSocketAddr(window));
 	this.banner = new Banner(document.getElementById("banner"));
@@ -58,7 +56,7 @@ function App(window, document) {
 		// add main overlay event listener
 		this.out.addEventListener('click', function() {
 			if (self.video.canStartStream) {
-				self.video.beginStream(self.socket);
+				self.video.beginStream(self.socket, self.chat.getUsername());
 			}
 		});
 
@@ -98,6 +96,10 @@ function App(window, document) {
 		this.socket.on('info', function(text, persist) {
 			self.banner.showBanner(text, persist);
 		});
+	};
+
+	this.getVideo = function() {
+		return this.video;
 	};
 
 	this.showOutput = function(text, timeout) {
@@ -210,13 +212,16 @@ function App(window, document) {
 	});
 
 	this.socket.on("streamload", function(data) {
+		self.showOutput("Loading, please wait...");
+
 		data = parseSockData(data)
 		if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
-			self.ytVideo.load(data.extra.url);
+			self.video.load(data);
 		} else if (data.extra.kind == Cons.STREAM_KIND_LOCAL) {
-			self.video.load(data.extra.url);
+			self.video.load(data);
 		}
-		console.log("GOT STREAMLOAD DATA", data);
+
+		self.socket.send("request_streamsync");
 	});
 
 	this.socket.on('streamsync', function(data) {
@@ -237,7 +242,7 @@ function App(window, document) {
 			} else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
 				self.banner.showBanner('Rewinding stream, please wait...');
 			} else {
-				self.banner.showBanner('Video stream lag detected. Syncing your stream...');
+				self.banner.showBanner('Catching up your stream...');
 			}
 		}
 

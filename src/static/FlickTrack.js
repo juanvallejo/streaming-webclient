@@ -358,7 +358,6 @@ var Banner = require('./banner.js');
 var Chat = require('./chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
-var YouTubeVideoPlayer = require('./ytvideo.js');
 var Socket = require('./socket.js');
 
 // attempts to build a socket connection url using
@@ -382,7 +381,6 @@ function App(window, document) {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
-	this.ytVideo = new YouTubeVideoPlayer(document.createElement('iframe'));
 	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(getSocketAddr(window));
 	this.banner = new Banner(document.getElementById("banner"));
@@ -410,7 +408,7 @@ function App(window, document) {
 		// add main overlay event listener
 		this.out.addEventListener('click', function() {
 			if (self.video.canStartStream) {
-				self.video.beginStream(self.socket);
+				self.video.beginStream(self.socket, self.chat.getUsername());
 			}
 		});
 
@@ -450,6 +448,10 @@ function App(window, document) {
 		this.socket.on('info', function(text, persist) {
 			self.banner.showBanner(text, persist);
 		});
+	};
+
+	this.getVideo = function() {
+		return this.video;
 	};
 
 	this.showOutput = function(text, timeout) {
@@ -562,13 +564,16 @@ function App(window, document) {
 	});
 
 	this.socket.on("streamload", function(data) {
+		self.showOutput("Loading, please wait...");
+
 		data = parseSockData(data)
 		if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
-			self.ytVideo.load(data.extra.url);
+			self.video.load(data);
 		} else if (data.extra.kind == Cons.STREAM_KIND_LOCAL) {
-			self.video.load(data.extra.url);
+			self.video.load(data);
 		}
-		console.log("GOT STREAMLOAD DATA", data);
+
+		self.socket.send("request_streamsync");
 	});
 
 	this.socket.on('streamsync', function(data) {
@@ -589,7 +594,7 @@ function App(window, document) {
 			} else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
 				self.banner.showBanner('Rewinding stream, please wait...');
 			} else {
-				self.banner.showBanner('Video stream lag detected. Syncing your stream...');
+				self.banner.showBanner('Catching up your stream...');
 			}
 		}
 
@@ -740,7 +745,7 @@ function parseSockData(b64) {
 }
 
 window.App = App;
-},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./socket.js":6,"./video.js":7,"./ytvideo.js":8}],5:[function(require,module,exports){
+},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./socket.js":6,"./video.js":7}],5:[function(require,module,exports){
 /**
  * Emitter prototype for objects that send and receive events
  */
@@ -821,6 +826,8 @@ var Emitter = require('./proto/emitter.js');
 function Video(videoElement, sTrackElement) {
 	var self = this;
 
+	this.loadedData = null;
+	this.ytElem = null;
 	this.video = videoElement;
 	this.duration = null;
 	this.savedTimer = null;
@@ -870,8 +877,78 @@ function Video(videoElement, sTrackElement) {
 		this.callbacks[e].push(fn);
 	};
 
+	this.hidePlayer = function() {
+		this.video.style.display = 'none';
+	};
+
+	this.showPlayer = function() {
+		this.video.style.display = 'block';
+	};
+
+	this.hideYtPlayer = function() {
+		this.ytElem.style.display = 'none';
+	};
+
+	this.showYtPlayer = function() {
+        this.ytElem.style.display = 'block';
+	};
+
+	this.onYtPlayerReady = function(evt) {
+
+	};
+
+	this.onYtPlayerStateChange = function(evt) {
+
+	};
+
+	this.loadYtVideo = function(frame, videoId) {
+		frame.contentWindow.postMessage(JSON.stringify({
+			'event': 'command',
+			'func': 'loadVideoById',
+			'args': [videoId, 0, 'large']
+		}), "*")
+	};
+
+	this.seekYtVideo = function(frame, time) {
+		console.log("paring bfsd", time);
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'seekTo',
+            'args': [time, "true"]
+        }), "*")
+	};
+
+	this.playYtVideo = function(frame) {
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'playVideo',
+            'args': []
+        }), "*")
+	};
+
+    this.pauseYtVideo = function(frame) {
+        frame.contentWindow.postMessage(JSON.stringify({
+            'event': 'command',
+            'func': 'pauseVideo',
+            'args': []
+        }), "*")
+    };
+
+    this.initYtPlayer = function(YT, ytElem) {
+        this.ytPlayer = new YT.Player(ytElem, {
+            width: '100%',
+            height: '100%',
+            events: {
+                'onReady': self.onYtPlayerReady,
+                'onStateChange': self.onYtPlayerStateChange
+            }
+        });
+        this.ytElem = this.ytPlayer.getIframe();
+		this.hideYtPlayer();
+    };
+
 	this.init = function(location, videoElement) {
-		// this.video.src = getStreamURLFromLocation(location.pathname);
+		this.video.style.display = 'none';
 		this.video.crossorigin = "anonymous";
 
 		this.subtitlesTrack.kind = "captions";
@@ -891,11 +968,33 @@ function Video(videoElement, sTrackElement) {
 		parent.appendChild(this.video);
 	};
 
-	this.load = function(filepath) {
-		this.video.src = "/s/" + filepath
+	this.load = function(data) {
+		this.pause();
+
+		self.loadedData = data.extra;
+        if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.hidePlayer();
+            this.showYtPlayer();
+        	this.loadYtVideo(self.ytPlayer.getIframe(), youtubeVideoIdFromUrl(data.extra.url))
+			return;
+        }
+
+        this.hideYtPlayer();
+        this.showPlayer();
+		this.video.src = "/s/" + data.extra.url;
 	};
 
 	this.play = function(time) {
+		if (!self.loadedData) {
+			console.log("WARN:", 'attempt to play video with no data loaded.');
+			return;
+		}
+
+		if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+			this.playYtVideo(self.ytPlayer.getIframe());
+			return;
+		}
+
 		if (time) {
 			this.video.currentTime = time;
 		}
@@ -910,6 +1009,16 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.pause = function() {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to pause video with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.pauseYtVideo(self.ytPlayer.getIframe());
+            return;
+        }
+
 		try {
 			this.video.pause();
 		} catch(e) {
@@ -918,6 +1027,16 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.setTime = function(time) {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to pause video with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            this.seekYtVideo(self.ytPlayer.getIframe(), time);
+            return;
+        }
+
 		this.video.currentTime = time;
 	};
 
@@ -925,10 +1044,11 @@ function Video(videoElement, sTrackElement) {
 		return this.video.currentTime;
 	};
 
-	this.beginStream = function(socket) {
-		socket.send('request_beginstream', {
-			timer: self.savedTimer
-		});
+	this.beginStream = function(socket, user) {
+        socket.send('request_chatmessage', {
+            user: user,
+            message: "/stream play"
+        });
 	};
 
 	this.addSubtitles = function(path, callback) {
@@ -961,128 +1081,10 @@ function getStreamURLFromLocation(location) {
 	return location.replace(/^\/v\//gi, '/s/');
 }
 
-module.exports = Video;
-
-},{"./constants.js":3,"./proto/emitter.js":5}],8:[function(require,module,exports){
-/**
- * handles local video streaming
- */
-
-var Cons = require('./constants.js');
-var Emitter = require('./proto/emitter.js');
-
-function YouTubeVideo(videoElement) {
-    var self = this;
-
-    this.video = videoElement;
-    this.duration = null;
-    this.savedTimer = null;
-    this.sourceFileError = null;
-    this.alertShown = false;
-    this.canStartStream = false;
-    this.metadataLoaded = false;
-
-    // ignores the actual HTMLEntity when adding
-    // an event listener to this wrapper object.
-    this.EVT_IGNORE_ELEM = true;
-
-    this.on = function(e, fn, ignore_elem) {
-        if (!this.callbacks[e]) {
-            this.callbacks[e] = [];
-
-            if(!ignore_elem) {
-                this.video.addEventListener(e, (function(e) {
-                    return function(args) {
-                        self.emit(e, arguments);
-                    }
-                })(e));
-            }
-        }
-        this.callbacks[e].push(fn);
-    };
-
-    this.init = function(location, videoElement) {
-        this.video.className = 'full-size block';
-        this.video.frameborder = "0";
-        this.video.allowfullscreen = true;
-    };
-
-    this.appendTo = function(parent) {
-        parent.appendChild(this.video);
-    };
-
-    this.load = function(url) {
-        this.video.src = videoURLToEmbeddable(url);
-    };
-
-    this.play = function(time) {
-        if (time) {
-            this.video.currentTime = time;
-        }
-        if (this.video.muted) {
-            console.log('WARN:', 'playing muted video...');
-        }
-        try {
-            this.video.play();
-        } catch(e) {
-            console.log('EXCEPT VIDEO PLAY', e);
-        }
-    };
-
-    this.pause = function() {
-        try {
-            this.video.pause();
-        } catch(e) {
-            console.log('EXCEPT VIDEO PAUSE', e);
-        }
-    };
-
-    this.setTime = function(time) {
-        this.video.currentTime = time;
-    };
-
-    this.getTime = function() {
-        return this.video.currentTime;
-    };
-
-    this.beginStream = function(socket) {
-        socket.send('request_beginstream', {
-            timer: self.savedTimer
-        });
-    };
-
-    this.getVideo = function() {
-        return this.video;
-    };
-
-    this.getDuration = function() {
-        return this.duration;
-    };
-
-    // add event listeners
-    this.on('loadedmetadata', function() {
-        self.duration = self.video.duration;
-        self.metadataLoaded = true;
-    });
-};
-
-YouTubeVideo.prototype = new Emitter();
-
-function videoURLToEmbeddable(link) {
-    var videoId = link;
-    if (link.match(/watch\?v\=/gi)) {
-        videoId = link.split("watch?v=")[1];
-    } else {
-        videoId = link.split('/');
-        videoId = videoId[videoId.length - 1];
-    }
-    return ('https://www.youtube.com/embed/' + videoId);
-};
-
-function getStreamURLFromLocation(location) {
-    return location.replace(/^\/v\//gi, '/s/');
+function youtubeVideoIdFromUrl(url) {
+	return url.split("watch?v=")[1].split("&")[0]
 }
 
-module.exports = YouTubeVideo;
+module.exports = Video;
 
 },{"./constants.js":3,"./proto/emitter.js":5}]},{},[4]);
