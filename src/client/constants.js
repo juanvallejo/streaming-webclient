@@ -11,6 +11,8 @@ var Constants = {
 	DEFAULT_SOCKET_HOST: 'localhost',
 	DEFAULT_SOCKET_PORT: 8080,
 
+	STREAM_URL_PREFIX: '/s/',
+
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
 	STREAM_KIND_TWITCH: 'twitch'

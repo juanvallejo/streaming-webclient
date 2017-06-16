@@ -66,9 +66,10 @@ function App(window, document) {
 
 		this.video.on('error', function(err) {
 			if (err.target.error.code == Cons.ERR_CODE_VID_NOTFOUND) {
-				self.out.innerHTML = 'The video file <span class="text-hl-name">' + self.video.getVideo().src.split("/s/")[1] + '</span> could not be loaded.';
+				self.out.innerHTML = 'The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.';
 			} else {
-				self.out.innerHTML = 'Unexpected error occurred while receiving video data.';
+				self.out.innerHTML = 'Unexpected error occurred while receiving video data.<br />';
+				self.out.innerHTML += err.target.error
 			}
 
 			self.video.sourceFileError = true;
@@ -359,6 +360,17 @@ function App(window, document) {
 		}
 
 		self.chat.handleMouseOut();
+	});
+
+	window.addEventListener("message", function(e) {
+		try {
+			var data = JSON.parse(e.data);
+			if (data.event == "infoDelivery" && data.info) {
+				// self.video.updateYTVideoInfo(data.info);
+			}
+		} catch (err) {
+			console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", err);
+		}
 	});
 
 	window.addEventListener('keydown', function(e) {

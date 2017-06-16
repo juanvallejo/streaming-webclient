@@ -12,6 +12,7 @@ function Video(videoElement, sTrackElement) {
 	this.ytElem = null;
 	this.video = videoElement;
 	this.duration = null;
+	this.ytVideoInfo = {};
 	this.savedTimer = null;
 	this.sourceFileError = null;
 	this.alertShown = false;
@@ -92,7 +93,6 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.seekYtVideo = function(frame, time) {
-		console.log("paring bfsd", time);
         frame.contentWindow.postMessage(JSON.stringify({
             'event': 'command',
             'func': 'seekTo',
@@ -114,6 +114,27 @@ function Video(videoElement, sTrackElement) {
             'func': 'pauseVideo',
             'args': []
         }), "*")
+    };
+
+    this.getYtVideoInfo = function(videoId) {
+		var xhr = new XMLHttpRequest();
+		xhr.open("GET", "https://www.googleapis.com/youtube/v3/videos?id=" + videoId + "&key=AIzaSyCJeM6TxsMb5Ie2JeWswUj0e4Du3JmFbPQ&part=contentDetails")
+    	xhr.send(null);
+		xhr.addEventListener("readystatechange", function() {
+			if (xhr.status == 200 && xhr.readyState == 4) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+					if (!data.items.length) {
+						console.log("WARN XHR received video info with no data.");
+						return;
+					}
+
+					self.ytVideoInfo = data.items[0].contentDetails;
+                } catch (err) {
+                    console.log("ERR XHR unable to parse event data as json:", err);
+                }
+			}
+		})
     };
 
     this.initYtPlayer = function(YT, ytElem) {
@@ -157,13 +178,14 @@ function Video(videoElement, sTrackElement) {
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
             this.hidePlayer();
             this.showYtPlayer();
-        	this.loadYtVideo(self.ytPlayer.getIframe(), youtubeVideoIdFromUrl(data.extra.url))
+        	this.loadYtVideo(self.ytPlayer.getIframe(), youtubeVideoIdFromUrl(data.extra.url));
+        	this.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url))
 			return;
         }
 
         this.hideYtPlayer();
         this.showPlayer();
-		this.video.src = "/s/" + data.extra.url;
+		this.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
 	};
 
 	this.play = function(time) {
@@ -247,6 +269,15 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.getDuration = function() {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to get video duration with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            return this.ytVideoInfo ? ytDurationToSeconds(this.ytVideoInfo.duration) : 0;
+        }
+
 		return this.duration;
 	};
 
@@ -259,12 +290,19 @@ function Video(videoElement, sTrackElement) {
 
 Video.prototype = new Emitter();
 
-function getStreamURLFromLocation(location) {
-	return location.replace(/^\/v\//gi, '/s/');
-}
-
 function youtubeVideoIdFromUrl(url) {
 	return url.split("watch?v=")[1].split("&")[0]
+}
+
+// PT45M53S
+function ytDurationToSeconds(ytDuration) {
+    var match = ytDuration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+
+    var hours = (parseInt(match[1]) || 0);
+    var minutes = (parseInt(match[2]) || 0);
+    var seconds = (parseInt(match[3]) || 0);
+
+    return hours * 3600 + minutes * 60 + seconds;
 }
 
 module.exports = Video;
