@@ -7,18 +7,24 @@
 	<script src="/src/static/socket.io.js"></script>
 	<script src="/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
 	<script src="/src/static/FlickTrack.js"></script>
-	<script src="https://www.youtube.com/iframe_api"></script>
 <style>
 @import url('https://fonts.googleapis.com/css?family=Questrial');
-#overlay {
+.overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background: rgba(0,0,0,0.7);
 	z-index: 1;
 }
+#overlay {
+	background: rgba(0,0,0,0.7);
+	z-index: 2;
+
+}
+#video-overlay {
+}
+
 #out {
 	cursor: pointer;
 }
@@ -153,7 +159,7 @@ video, #yt-video {
 </style>
 </head>
 <body>
-<div id="overlay" class="middle-container">
+<div id="overlay" class="overlay middle-container">
 	<div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
 </div>
 <div id="banner-container" class="full-size-hor middle-container">
@@ -170,12 +176,18 @@ video, #yt-video {
 			</div>
 		</div>
 </div>
+<div id="video-overlay" class="overlay"></div>
 <div id="yt-video"></div>
 <script>
 var app = new App(window, document);
 app.init();
 
-function onYouTubeIframeAPIReady() {
+var tag = document.createElement('script');
+var firstScriptTag = document.getElementsByTagName('script')[0];
+tag.src = "https://www.youtube.com/iframe_api";
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+window.onYouTubeIframeAPIReady = function(){
     app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
 }
 </script>

@@ -101,7 +101,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	this.unlockOverlay = function() {
 		this.usernameInput.value = '';
 		this.usernameInput.removeAttribute("disabled");
-	}
+	};
 
 	this.isHidden = function() {
 		return this.hidden;

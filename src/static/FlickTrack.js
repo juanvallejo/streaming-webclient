@@ -143,7 +143,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	this.unlockOverlay = function() {
 		this.usernameInput.value = '';
 		this.usernameInput.removeAttribute("disabled");
-	}
+	};
 
 	this.isHidden = function() {
 		return this.hidden;
@@ -581,7 +581,7 @@ function App(window, document) {
 
 	this.socket.on('streamsync', function(data) {
 		data = parseSockData(data);
-		console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
+		// console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
 
 		self.video.canStartStream = false;
 
@@ -592,23 +592,24 @@ function App(window, document) {
 		}
 
 		if (Math.abs(parseInt(data.extra.timer) - parseInt(self.video.getTime())) > 10 && !data.extra.isPaused) {
-			if (data.extra.timer == 1) {
+			if (data.extra.timer <= 1) {
 				self.banner.showBanner('Resetting stream, please wait...');
 			} else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
-				self.banner.showBanner('Rewinding stream, please wait...');
-			} else {
-				self.banner.showBanner('Catching up your stream...');
+				self.banner.showBanner('Seeking stream, please wait...');
 			}
 		}
 
-		self.video.setTime(data.extra.timer);
+		// only update video time if "lag" time > 1 second
+		if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.timer) > 0.5)) {
+			self.video.setTime(data.extra.timer);
+        }
 
 		// safari bug fix - currentTime will not take
 		// effect until a second afterthe page has loaded
-		if (!self.video.getTime()) {
+		if (!self.video.getTime() && self.video.videoStreamKind === Cons.STREAM_KIND_LOCAL) {
 			setTimeout(function() {
 				self.video.setTime(data.extra.timer + 1);
-			}, 1000);
+			}, 1500);
 		}
 
 		if (!data.extra.isPlaying) {
@@ -686,7 +687,7 @@ function App(window, document) {
 		if (data.extra.on && data.extra.path) {
 			self.video.addSubtitles(data.extra.path, function(err) {
 				if(err) {
-					self.banner.showBanner('Unable to add subtitles track at this time: ' + err);
+					self.banner.showBanner(err);
 					return;
 				}
 				self.banner.showBanner('Successfully added subtitles track.');
@@ -720,7 +721,7 @@ function App(window, document) {
 		try {
 			var data = JSON.parse(e.data);
 			if (data.event == "infoDelivery" && data.info) {
-				// self.video.updateYTVideoInfo(data.info);
+				self.video.ytVideoCurrentTime = data.info.currentTime;
 			}
 		} catch (err) {
 			console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", err);
@@ -840,11 +841,11 @@ var Emitter = require('./proto/emitter.js');
 function Video(videoElement, sTrackElement) {
 	var self = this;
 
+	this.videoStreamKind = Cons.STREAM_KIND_LOCAL;
+
 	this.loadedData = null;
-	this.ytElem = null;
 	this.video = videoElement;
 	this.duration = null;
-	this.ytVideoInfo = {};
 	this.savedTimer = null;
 	this.sourceFileError = null;
 	this.alertShown = false;
@@ -853,12 +854,24 @@ function Video(videoElement, sTrackElement) {
 	this.subtitlesTrack = sTrackElement;
 	this.subtitlesTrackActivated = false;
 
-	// ignores the actual HTMLEntity when adding
+    this.ytVideoInfo = {};
+    this.ytVideoCurrentTime = 0;
+    this.ytElem = null;
+    this.ytReadyCallbacks = [];
+    this.ytPlayerReady = false;
+
+
+    // ignores the actual HTMLEntity when adding
 	// an event listener to this wrapper object.
 	this.EVT_IGNORE_ELEM = true;
 
 	// handlers
-	this.defaultSubtitlesHandler = function(path, handler) { 
+	this.defaultSubtitlesHandler = function(path, handler) {
+        if (self.loadedData.kind != Cons.STREAM_KIND_LOCAL) {
+        	handler('This type of stream does not support adding subtitles.');
+        	return false;
+        }
+
 		if (!handler || typeof handler != 'function') {
 			handler = function () {};
 		}
@@ -901,53 +914,85 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.hideYtPlayer = function() {
-		this.ytElem.style.display = 'none';
+		self.onYtPlayerReady(function() {
+            self.ytElem.style.display = 'none';
+		});
 	};
 
 	this.showYtPlayer = function() {
-        this.ytElem.style.display = 'block';
+		self.onYtPlayerReady(function() {
+            self.ytElem.style.display = 'block';
+		});
 	};
 
-	this.onYtPlayerReady = function(evt) {
+	// note: uses youtube iframe-api context.
+	// called once when youtube player is ready.
+	this.callYtPlayerCallbacks = function(evt) {
+		self.ytPlayerReady = true;
+		while(self.ytReadyCallbacks.length) {
+            self.ytReadyCallbacks.shift().call(self, self.ytPlayer.getIframe());
+		}
+	};
 
+	// "safe" wrapper for making youtube iframe api calls.
+	// Adds passed function to a callback stack that is parsed
+	// once the youtube player has loaded. If the player has already
+	// loaded, the function is then immediately called.
+	this.onYtPlayerReady = function(callback) {
+		if (this.ytPlayerReady) {
+			callback.call(self, self.ytPlayer.getIframe());
+			return;
+		}
+
+		this.ytReadyCallbacks.push(callback);
 	};
 
 	this.onYtPlayerStateChange = function(evt) {
 
 	};
 
-	this.loadYtVideo = function(frame, videoId) {
-		frame.contentWindow.postMessage(JSON.stringify({
-			'event': 'command',
-			'func': 'loadVideoById',
-			'args': [videoId, 0, 'large']
-		}), "*")
+	this.loadYtVideo = function(videoId) {
+        self.onYtPlayerReady(function(frame) {
+			frame.contentWindow.postMessage(JSON.stringify({
+				'event': 'command',
+				'func': 'loadVideoById',
+				'args': [videoId, 0, 'large']
+			}), "*");
+        });
 	};
 
-	this.seekYtVideo = function(frame, time) {
-        frame.contentWindow.postMessage(JSON.stringify({
-            'event': 'command',
-            'func': 'seekTo',
-            'args': [time, "true"]
-        }), "*")
+	this.seekYtVideo = function(time) {
+		self.onYtPlayerReady(function(frame) {
+			frame.contentWindow.postMessage(JSON.stringify({
+				'event': 'command',
+				'func': 'seekTo',
+				'args': [time, "true"]
+			}), "*");
+        });
 	};
 
-	this.playYtVideo = function(frame) {
-        frame.contentWindow.postMessage(JSON.stringify({
-            'event': 'command',
-            'func': 'playVideo',
-            'args': []
-        }), "*")
+	this.playYtVideo = function() {
+        self.onYtPlayerReady(function(frame) {
+            frame.contentWindow.postMessage(JSON.stringify({
+                'event': 'command',
+                'func': 'playVideo',
+                'args': []
+            }), "*");
+        });
 	};
 
-    this.pauseYtVideo = function(frame) {
-        frame.contentWindow.postMessage(JSON.stringify({
-            'event': 'command',
-            'func': 'pauseVideo',
-            'args': []
-        }), "*")
+    this.pauseYtVideo = function() {
+        self.onYtPlayerReady(function(frame) {
+            frame.contentWindow.postMessage(JSON.stringify({
+                'event': 'command',
+                'func': 'pauseVideo',
+                'args': []
+            }), "*");
+        });
     };
 
+    // does not need to be in a "safe" yt api callback as it performs an external request
+	// to an api orthogonal to the iframe api.
     this.getYtVideoInfo = function(videoId) {
 		var xhr = new XMLHttpRequest();
 		xhr.open("GET", "https://www.googleapis.com/youtube/v3/videos?id=" + videoId + "&key=AIzaSyCJeM6TxsMb5Ie2JeWswUj0e4Du3JmFbPQ&part=contentDetails")
@@ -974,12 +1019,25 @@ function Video(videoElement, sTrackElement) {
             width: '100%',
             height: '100%',
             events: {
-                'onReady': self.onYtPlayerReady,
+                'onReady': self.callYtPlayerCallbacks,
                 'onStateChange': self.onYtPlayerStateChange
+            },
+            playerVars: {
+                // 'origin': 'localhost',
+                'autoplay': 0,
+                'controls': 0,
+                'rel' : 0,
+				'cc_load_policy': 1,
+				'disablekb': 0,
+				'enablejsapi': 1,
+				'fs': 0,
+				'iv_load_policy': 3,
+				'showinfo': 0,
+				'modestbranding': 1
             }
         });
         this.ytElem = this.ytPlayer.getIframe();
-		this.hideYtPlayer();
+        self.ytElem.style.display = 'none';
     };
 
 	this.init = function(location, videoElement) {
@@ -999,6 +1057,7 @@ function Video(videoElement, sTrackElement) {
 		});
 	};
 
+	// multi-source safe. Only handles local video streams.
 	this.appendTo = function(parent) {
 		parent.appendChild(this.video);
 	};
@@ -1007,12 +1066,13 @@ function Video(videoElement, sTrackElement) {
 		this.pause();
 
 		self.loadedData = data.extra;
+		self.videoStreamKind = data.extra.kind;
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
-            this.hidePlayer();
-            this.showYtPlayer();
-        	this.loadYtVideo(self.ytPlayer.getIframe(), youtubeVideoIdFromUrl(data.extra.url));
-        	this.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url))
-			return;
+            self.hidePlayer();
+			self.showYtPlayer();
+			self.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url));
+            self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
+            return;
         }
 
         this.hideYtPlayer();
@@ -1027,7 +1087,7 @@ function Video(videoElement, sTrackElement) {
 		}
 
 		if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-			this.playYtVideo(self.ytPlayer.getIframe());
+			this.playYtVideo();
 			return;
 		}
 
@@ -1051,7 +1111,7 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            this.pauseYtVideo(self.ytPlayer.getIframe());
+            this.pauseYtVideo();
             return;
         }
 
@@ -1069,14 +1129,22 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            this.seekYtVideo(self.ytPlayer.getIframe(), time);
-            return;
+            self.seekYtVideo(time);
         }
 
 		this.video.currentTime = time;
 	};
 
 	this.getTime = function() {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to get video info with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            return self.ytVideoCurrentTime;
+        }
+
 		return this.video.currentTime;
 	};
 
@@ -1118,7 +1186,7 @@ function Video(videoElement, sTrackElement) {
 		self.duration = self.video.duration;
 		self.metadataLoaded = true;
 	});
-};
+}
 
 Video.prototype = new Emitter();
 
@@ -1126,8 +1194,12 @@ function youtubeVideoIdFromUrl(url) {
 	return url.split("watch?v=")[1].split("&")[0]
 }
 
-// PT45M53S
+// PT45M53S 
 function ytDurationToSeconds(ytDuration) {
+	if (!ytDuration) {
+		return 0;
+	}
+
     var match = ytDuration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
 
     var hours = (parseInt(match[1]) || 0);

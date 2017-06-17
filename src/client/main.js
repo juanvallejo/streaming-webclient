@@ -227,7 +227,7 @@ function App(window, document) {
 
 	this.socket.on('streamsync', function(data) {
 		data = parseSockData(data);
-		console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
+		// console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
 
 		self.video.canStartStream = false;
 
@@ -238,23 +238,24 @@ function App(window, document) {
 		}
 
 		if (Math.abs(parseInt(data.extra.timer) - parseInt(self.video.getTime())) > 10 && !data.extra.isPaused) {
-			if (data.extra.timer == 1) {
+			if (data.extra.timer <= 1) {
 				self.banner.showBanner('Resetting stream, please wait...');
 			} else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
-				self.banner.showBanner('Rewinding stream, please wait...');
-			} else {
-				self.banner.showBanner('Catching up your stream...');
+				self.banner.showBanner('Seeking stream, please wait...');
 			}
 		}
 
-		self.video.setTime(data.extra.timer);
+		// only update video time if "lag" time > 1 second
+		if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.timer) > 0.5)) {
+			self.video.setTime(data.extra.timer);
+        }
 
 		// safari bug fix - currentTime will not take
 		// effect until a second afterthe page has loaded
-		if (!self.video.getTime()) {
+		if (!self.video.getTime() && self.video.videoStreamKind === Cons.STREAM_KIND_LOCAL) {
 			setTimeout(function() {
 				self.video.setTime(data.extra.timer + 1);
-			}, 1000);
+			}, 1500);
 		}
 
 		if (!data.extra.isPlaying) {
@@ -332,7 +333,7 @@ function App(window, document) {
 		if (data.extra.on && data.extra.path) {
 			self.video.addSubtitles(data.extra.path, function(err) {
 				if(err) {
-					self.banner.showBanner('Unable to add subtitles track at this time: ' + err);
+					self.banner.showBanner(err);
 					return;
 				}
 				self.banner.showBanner('Successfully added subtitles track.');
@@ -366,7 +367,7 @@ function App(window, document) {
 		try {
 			var data = JSON.parse(e.data);
 			if (data.event == "infoDelivery" && data.info) {
-				// self.video.updateYTVideoInfo(data.info);
+				self.video.ytVideoCurrentTime = data.info.currentTime;
 			}
 		} catch (err) {
 			console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", err);
