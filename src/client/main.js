@@ -11,7 +11,7 @@ var Socket = require('./socket.js');
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
 function getSocketAddr(window) {
-	return (Cons.DEFAULT_SOCKET_PROTO + '://' + window.location.hostname + ':' + Cons.DEFAULT_SOCKET_PORT + Cons.DEFAULT_SOCKET_PATH) || window.location.origin;
+	return (Cons.DEFAULT_SOCKET_PROTO + '://' + window.location.hostname + ':' + window.location.port + Cons.DEFAULT_SOCKET_PATH) || window.location.origin;
 }
 
 function App(window, document) {

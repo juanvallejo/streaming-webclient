@@ -341,7 +341,7 @@ var Constants = {
 	DEFAULT_SOCKET_PROTO: 'http',
 	DEFAULT_SOCKET_PATH: '',
 	DEFAULT_SOCKET_HOST: 'localhost',
-	DEFAULT_SOCKET_PORT: 8080,
+	DEFAULT_SOCKET_PORT: 8000,
 
 	STREAM_URL_PREFIX: '/s/',
 
@@ -365,7 +365,7 @@ var Socket = require('./socket.js');
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
 function getSocketAddr(window) {
-	return (Cons.DEFAULT_SOCKET_PROTO + '://' + window.location.hostname + ':' + Cons.DEFAULT_SOCKET_PORT + Cons.DEFAULT_SOCKET_PATH) || window.location.origin;
+	return (Cons.DEFAULT_SOCKET_PROTO + '://' + window.location.hostname + ':' + window.location.port + Cons.DEFAULT_SOCKET_PATH) || window.location.origin;
 }
 
 function App(window, document) {
