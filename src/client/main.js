@@ -285,7 +285,16 @@ function App(window, document) {
 		self.hideOutput();
 
 		// handle video end
-		if (self.video.getDuration() && data.extra.timer > self.video.getDuration()) {
+		if (self.video.getDuration() && data.extra.timer >= self.video.getDuration()) {
+			// if there are items in the queue, and we have the url of the currently playing stream,
+			// safeskip to the next one
+			if (data.extra.queueSize && data.extra.stream) {
+				self.banner.showBanner("Playing next item in the queue.");
+				self.chat.sendText(self.socket, 'system', '/stream safeskip ' + data.extra.stream);
+				self.chat.sendText(self.socket, 'system', '/stream play');
+				return;
+			}
+
 			self.chat.sendText(self.socket, 'system', '/stream stop');
 			
 			if (isNewClient) {
