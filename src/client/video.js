@@ -358,6 +358,10 @@ function Video(videoElement, sTrackElement) {
 Video.prototype = new Emitter();
 
 function youtubeVideoIdFromUrl(url) {
+	if (url.match(/youtu\.be/gi)) {
+		var segs = url.split("/");
+		return segs[segs.length - 1];
+	}
 	return url.split("watch?v=")[1].split("&")[0]
 }
 
