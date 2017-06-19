@@ -383,8 +383,8 @@ function App(window, document) {
 		document.getElementById('chat-container-username-input'),
 		document.getElementById('chat-container-overlay'));
 
-	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.socket = new Socket(getSocketAddr(window));
+	this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
 	this.banner = new Banner(document.getElementById("banner"));
 
 	// set application states
@@ -640,17 +640,6 @@ function App(window, document) {
 
 		// handle video end
 		if (self.video.getDuration() && data.extra.timer >= self.video.getDuration()) {
-			// if there are items in the queue, and we have the url of the currently playing stream,
-			// safeskip to the next one
-			if (data.extra.queueSize && data.extra.stream) {
-				self.banner.showBanner("Playing next item in the queue.");
-				self.chat.sendText(self.socket, 'system', '/stream safeskip ' + data.extra.stream);
-				self.chat.sendText(self.socket, 'system', '/stream play');
-				return;
-			}
-
-			self.chat.sendText(self.socket, 'system', '/stream stop');
-			
 			if (isNewClient) {
 				self.showOutput('Welcome, the stream has already ended.');
 			} else {
@@ -712,6 +701,10 @@ function App(window, document) {
 		self.banner.showBanner('The subtitle track has loaded. Subtitles enabled.');
 	});
 
+	this.video.on('emitsocketdata', function(sockEvt, data) {
+		self.socket.send(sockEvt, data);
+	});
+
 	// add window event listeners
 	window.addEventListener('mousemove', function(e) {
 		var appWidth = window.innerWidth;
@@ -729,7 +722,7 @@ function App(window, document) {
 	window.addEventListener("message", function(e) {
 		try {
 			var data = JSON.parse(e.data);
-			if (data.event == "infoDelivery" && data.info) {
+			if (data.event === "infoDelivery" && data.info) {
 				self.video.ytVideoCurrentTime = data.info.currentTime;
 			}
 		} catch (err) {
@@ -1016,6 +1009,10 @@ function Video(videoElement, sTrackElement) {
 					}
 
 					self.ytVideoInfo = data.items[0].contentDetails;
+					self.ytVideoInfo.duration = ytDurationToSeconds(self.ytVideoInfo.duration)
+
+					// send stream info to server
+					self.emit('emitsocketdata', ['streamdata', self.ytVideoInfo]);
                 } catch (err) {
                     console.log("ERR XHR unable to parse event data as json:", err);
                 }
@@ -1184,7 +1181,7 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            return this.ytVideoInfo ? ytDurationToSeconds(this.ytVideoInfo.duration) : 0;
+            return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
         }
 
 		return this.duration;
@@ -1194,6 +1191,11 @@ function Video(videoElement, sTrackElement) {
 	this.on('loadedmetadata', function() {
 		self.duration = self.video.duration;
 		self.metadataLoaded = true;
+		
+        // send stream info to server
+        self.emit('emitsocketdata', ['streamdata', {
+        	duration: self.duration
+		}]);
 	});
 }
 

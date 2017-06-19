@@ -174,6 +174,10 @@ function Video(videoElement, sTrackElement) {
 					}
 
 					self.ytVideoInfo = data.items[0].contentDetails;
+					self.ytVideoInfo.duration = ytDurationToSeconds(self.ytVideoInfo.duration)
+
+					// send stream info to server
+					self.emit('emitsocketdata', ['streamdata', self.ytVideoInfo]);
                 } catch (err) {
                     console.log("ERR XHR unable to parse event data as json:", err);
                 }
@@ -342,7 +346,7 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            return this.ytVideoInfo ? ytDurationToSeconds(this.ytVideoInfo.duration) : 0;
+            return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
         }
 
 		return this.duration;
@@ -352,6 +356,11 @@ function Video(videoElement, sTrackElement) {
 	this.on('loadedmetadata', function() {
 		self.duration = self.video.duration;
 		self.metadataLoaded = true;
+
+        // send stream info to server
+        self.emit('emitsocketdata', ['streamdata', {
+        	duration: self.duration
+		}]);
 	});
 }
 
