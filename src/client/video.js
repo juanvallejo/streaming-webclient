@@ -367,14 +367,18 @@ function Video(videoElement, sTrackElement) {
 Video.prototype = new Emitter();
 
 function youtubeVideoIdFromUrl(url) {
-	if (url.match(/youtu\.be/gi)) {
+	if (url.match(/http(s)?\:\/\/youtu\.be/gi)) {
 		var segs = url.split("/");
 		return segs[segs.length - 1];
+	}
+
+	var segs = url.split("watch?v=");
+	if (!segs.length || segs.length < 2) {
+		return segs.length ? segs[0] : url;
 	}
 	return url.split("watch?v=")[1].split("&")[0]
 }
 
-// PT45M53S 
 function ytDurationToSeconds(ytDuration) {
 	if (!ytDuration) {
 		return 0;
