@@ -158,30 +158,6 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
-    // does not need to be in a "safe" yt api callback as it performs an external request
-	// to an api orthogonal to the iframe api.
-    this.getYtVideoInfo = function(videoId) {
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", "https://www.googleapis.com/youtube/v3/videos?id=" + videoId + "&key=AIzaSyCJeM6TxsMb5Ie2JeWswUj0e4Du3JmFbPQ&part=contentDetails")
-    	xhr.send(null);
-		xhr.addEventListener("readystatechange", function() {
-			if (xhr.status == 200 && xhr.readyState == 4) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-					if (!data.items.length) {
-						console.log("WARN XHR received video info with no data.");
-						return;
-					}
-
-					self.ytVideoInfo = data.items[0].contentDetails;
-					self.ytVideoInfo.duration = ytDurationToSeconds(self.ytVideoInfo.duration)
-                } catch (err) {
-                    console.log("ERR XHR unable to parse event data as json:", err);
-                }
-			}
-		})
-    };
-
     this.initYtPlayer = function(YT, ytElem) {
         this.ytPlayer = new YT.Player(ytElem, {
             width: '100%',
@@ -236,7 +212,6 @@ function Video(videoElement, sTrackElement) {
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
 			self.showYtPlayer();
-			self.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url));
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
             self.pause();
             return;

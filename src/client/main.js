@@ -215,6 +215,10 @@ function App(window, document) {
 		data = parseSockData(data);
 		// console.log('STREAMSYNC', 'received streamsync command', data, 'currentTime was', self.video.getTime());
 
+		if (data.extra.streamDuration) {
+			self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
+		}
+
 		self.video.canStartStream = false;
 
 		var isNewClient = false;
