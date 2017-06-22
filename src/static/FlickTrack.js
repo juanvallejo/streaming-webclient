@@ -167,6 +167,10 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		return ('https://www.youtube.com/embed/' + videoId);
 	};
 
+	this.reloadClient = function() {
+		window.location.reload();
+	};
+
 	this.addMessage = function(data) {
 		var message = document.createElement('span');
 		message.id = 'chat-container-view-message';
@@ -399,14 +403,6 @@ function App(window, document) {
 		this.out.innerHTML = "Welcome.<br />Load a video with <span class='text-hl-name'>/stream load &lt;url&gt;</span>"
 		this.out.innerHTML += "<br />Type <span class='text-hl-name'>/help</span> for available options."
 
-		// if username already stored, set as current username
-		if (this.localStorage.username) {
-			this.chat.lockOverlay("Loading, please wait...");
-			this.socket.send('request_updateusername', {
-				user: localStorage.username
-			});
-		}
-
 		// add main overlay event listener
 		this.out.addEventListener('click', function() {
 			if (self.video.canStartStream) {
@@ -478,24 +474,25 @@ function App(window, document) {
 
 	// register socket events
 	this.socket.on('connect', function() {
+        // if username already stored, set as current username
+        if (self.localStorage.username) {
+            // setTimeout(function() {
+			// 	self.chat.emit("username_submit", [self.localStorage.username]);
+			// }, 3000);
+        }
+
 		if (self.video.savedTimer) {
 			// TODO: it would be ideal to have the clickable overlay
 			// at the begining of a stopped stream resume using this
 			// timer, not have the server auto-play once connection
 			// is re-established after a connection lost.
-			self.socket.send('request_beginstream', {
-				timer: self.video.savedTimer
-			});
+			// self.socket.send('request_beginstream', {
+			// 	timer: self.video.savedTimer
+			// });
 		}
 		if (self.connectionLost) {
 			self.connectionLost = false;
 			self.banner.showBanner('Connection reestablished. Resuming stream.');
-
-			if (self.localStorage.username) {
-				self.socket.send('request_updateusername', {
-					user: self.localStorage.username
-				});
-			}
 		}
 	});
 
@@ -503,8 +500,6 @@ function App(window, document) {
 		self.banner.showBanner('Connection lost, please wait - attempting to reestablish.', true);
 		self.video.savedTimer = self.video.getTime();
 
-		console.log('saved timer was', self.video.savedTimer);
-		
 		self.video.pause();
 		self.video.canStartStream = false;
 		self.connectionLost = true;
@@ -536,13 +531,6 @@ function App(window, document) {
 		self.banner.showBanner('<span class="text-hl-name">' + ((data.extra && data.extra.oldUser) || 'Anonymous (' + (data.id || 'unknown id') + ')') + '</span> is now known as ' + data.user);
 	});
 
-	this.socket.on('beginstream', function(data) {
-		data = parseSockData(data);
-		self.video.canStartStream = false;
-		self.video.play(data.extra.timer);
-		$(self.overlay).hide();
-	});
-
 	this.socket.on('chatmethodaction', function(data) {
 		data = parseSockData(data);
 		if (!data.extra) {
@@ -567,13 +555,15 @@ function App(window, document) {
 	});
 
 	this.socket.on("streamload", function(data) {
-		self.showOutput("Loading, please wait...");
+		self.showOutput("Loading stream, please wait...");
 
-		data = parseSockData(data)
-		if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
-			self.video.load(data);
-		} else if (data.extra.kind == Cons.STREAM_KIND_LOCAL) {
-			self.video.load(data);
+		data = parseSockData(data);
+		self.video.load(data);
+
+		if (data.extra.kind != Cons.STREAM_KIND_YOUTUBE
+			&& data.extra.kind != Cons.STREAM_KIND_LOCAL) {
+			self.showOutput("Server asked to load invalid stream type", '"' + data.extra.kind + '"')
+			return
 		}
 
 		self.socket.send("request_streamsync");
@@ -622,15 +612,16 @@ function App(window, document) {
 				}
 
 				self.showOutput('The stream has not yet started. <span class="text-hl-name">Click to start it.</span>');
-				
 				self.video.canStartStream = true;
 				return;
 			}
 
+            self.video.canStartStream = true;
+
 			if (isNewClient) {
 				self.showOutput('Welcome, The stream has been paused.');
 			} else {
-				self.showOutput('The stream has been paused.');
+				self.showOutput('The stream has been paused. <span class="text-hl-name">Click to resume it.</span>');
 			}
 
 			return;
@@ -1010,9 +1001,6 @@ function Video(videoElement, sTrackElement) {
 
 					self.ytVideoInfo = data.items[0].contentDetails;
 					self.ytVideoInfo.duration = ytDurationToSeconds(self.ytVideoInfo.duration)
-
-					// send stream info to server
-					self.emit('emitsocketdata', ['streamdata', self.ytVideoInfo]);
                 } catch (err) {
                     console.log("ERR XHR unable to parse event data as json:", err);
                 }
@@ -1069,8 +1057,6 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.load = function(data) {
-		this.pause();
-
 		self.loadedData = data.extra;
 		self.videoStreamKind = data.extra.kind;
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
@@ -1078,12 +1064,14 @@ function Video(videoElement, sTrackElement) {
 			self.showYtPlayer();
 			self.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url));
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
+            self.pause();
             return;
         }
 
-        this.hideYtPlayer();
-        this.showPlayer();
-		this.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+        self.pause();
+        self.hideYtPlayer();
+        self.showPlayer();
+		self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
 	};
 
 	this.play = function(time) {
@@ -1117,12 +1105,12 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            this.pauseYtVideo();
+            self.pauseYtVideo();
             return;
         }
 
 		try {
-			this.video.pause();
+			self.video.pause();
 		} catch(e) {
 			console.log('EXCEPT VIDEO PAUSE', e);
 		}

@@ -175,9 +175,6 @@ function Video(videoElement, sTrackElement) {
 
 					self.ytVideoInfo = data.items[0].contentDetails;
 					self.ytVideoInfo.duration = ytDurationToSeconds(self.ytVideoInfo.duration)
-
-					// send stream info to server
-					self.emit('emitsocketdata', ['streamdata', self.ytVideoInfo]);
                 } catch (err) {
                     console.log("ERR XHR unable to parse event data as json:", err);
                 }
@@ -234,8 +231,6 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.load = function(data) {
-		this.pause();
-
 		self.loadedData = data.extra;
 		self.videoStreamKind = data.extra.kind;
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
@@ -243,12 +238,14 @@ function Video(videoElement, sTrackElement) {
 			self.showYtPlayer();
 			self.getYtVideoInfo(youtubeVideoIdFromUrl(data.extra.url));
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
+            self.pause();
             return;
         }
 
-        this.hideYtPlayer();
-        this.showPlayer();
-		this.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+        self.pause();
+        self.hideYtPlayer();
+        self.showPlayer();
+		self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
 	};
 
 	this.play = function(time) {
@@ -282,12 +279,12 @@ function Video(videoElement, sTrackElement) {
         }
 
         if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            this.pauseYtVideo();
+            self.pauseYtVideo();
             return;
         }
 
 		try {
-			this.video.pause();
+			self.video.pause();
 		} catch(e) {
 			console.log('EXCEPT VIDEO PAUSE', e);
 		}

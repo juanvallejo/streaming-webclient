@@ -125,6 +125,10 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		return ('https://www.youtube.com/embed/' + videoId);
 	};
 
+	this.reloadClient = function() {
+		window.location.reload();
+	};
+
 	this.addMessage = function(data) {
 		var message = document.createElement('span');
 		message.id = 'chat-container-view-message';
