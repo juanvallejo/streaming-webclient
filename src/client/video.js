@@ -23,6 +23,7 @@ function Video(videoElement, sTrackElement) {
 
     this.ytVideoInfo = {};
     this.ytVideoCurrentTime = 0;
+    this.ytVideoVolume = 50;
     this.ytElem = null;
     this.ytReadyCallbacks = [];
     this.ytPlayerReady = false;
@@ -138,6 +139,16 @@ function Video(videoElement, sTrackElement) {
         });
 	};
 
+    this.setYtVideoVolume = function(vol) {
+        self.onYtPlayerReady(function(frame) {
+            frame.contentWindow.postMessage(JSON.stringify({
+                'event': 'command',
+                'func': 'setVolume',
+                'args': [vol]
+            }), "*");
+        });
+    };
+
 	this.playYtVideo = function() {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -207,6 +218,7 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.load = function(data) {
+        self.pause();
 		self.loadedData = data.extra;
 		self.videoStreamKind = data.extra.kind;
         if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
@@ -309,6 +321,63 @@ function Video(videoElement, sTrackElement) {
 
 	this.getVideo = function() {
 		return this.video;
+	};
+
+	this.increaseVolume = function(val) {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            self.ytVideoVolume += val;
+        	self.setYtVideoVolume(self.ytVideoVolume);
+        	return;
+        }
+
+        if (val > 1) {
+            val /= 100;
+        }
+
+        self.video.volume = self.video.volume + val;
+    };
+
+	this.decreaseVolume = function(val) {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            self.ytVideoVolume -= val;
+            self.setYtVideoVolume(self.ytVideoVolume);
+            return;
+        }
+
+        if (val > 1) {
+			val /= 100;
+		}
+
+        self.video.volume = self.video.volume - val;
+    };
+
+	this.setVolume = function(val) {
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
+
+        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+            self.ytVideoVolume = val;
+            self.setYtVideoVolume(self.ytVideoVolume);
+            return;
+        }
+
+        if (val > 1) {
+        	val /= 100;
+		}
+
+        self.video.volume = val;
 	};
 
 	this.getDuration = function() {

@@ -49,6 +49,18 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		this.input.value = '';
 	};
 
+	this.increaseVolume = function(val) {
+		this.emit("streamcontrol", ["increaseVolume", [val]]);
+	};
+
+	this.decreaseVolume = function(val) {
+        this.emit("streamcontrol", ["decreaseVolume", [val]]);
+	};
+
+	this.setVolume = function(val) {
+        this.emit("streamcontrol", ["setVolume", [val]]);
+	};
+
 	this.focusInput = function() {
 		this.input.focus();
 		this.isFocused(true);

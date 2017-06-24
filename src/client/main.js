@@ -86,6 +86,15 @@ function App(window, document) {
 			self.banner.showBanner(text, persist);
 		});
 
+		this.chat.on('streamcontrol', function(method, args) {
+			if (!self.video[method]) {
+				self.banner.showBanner("chat command attempted to control stream with an invalid operation (" + method + ").");
+				return;
+			}
+
+			self.video[method].apply(self, args);
+		});
+
 		this.socket.on('info', function(text, persist) {
 			self.banner.showBanner(text, persist);
 		});
