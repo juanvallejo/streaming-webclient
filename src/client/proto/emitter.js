@@ -17,7 +17,7 @@ function Emitter() {
 			return;
 		}
 
-		var fns = this.callbacks[e]
+		var fns = this.callbacks[e];
 		for (var i = 0; i < fns.length; i++) {
 			fns[i].apply(this, params || []);
 		}
