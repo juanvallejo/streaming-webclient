@@ -12,6 +12,7 @@ function Video(videoElement, sTrackElement) {
 
 	this.loadedData = null;
 	this.video = videoElement;
+	this.videoVolume = window.localStorage.volume || 0.5;
 	this.duration = null;
 	this.savedTimer = null;
 	this.sourceFileError = null;
@@ -23,7 +24,6 @@ function Video(videoElement, sTrackElement) {
 
     this.ytVideoInfo = {};
     this.ytVideoCurrentTime = 0;
-    this.ytVideoVolume = 50;
     this.ytElem = null;
     this.ytReadyCallbacks = [];
     this.ytPlayerReady = false;
@@ -35,12 +35,12 @@ function Video(videoElement, sTrackElement) {
 
 	// handlers
 	this.defaultSubtitlesHandler = function(path, handler) {
-        if (self.loadedData.kind != Cons.STREAM_KIND_LOCAL) {
+        if (self.loadedData.kind !== Cons.STREAM_KIND_LOCAL) {
         	handler('This type of stream does not support adding subtitles.');
         	return false;
         }
 
-		if (!handler || typeof handler != 'function') {
+		if (!handler || typeof handler !== 'function') {
 			handler = function () {};
 		}
 		
@@ -218,21 +218,30 @@ function Video(videoElement, sTrackElement) {
 	};
 
 	this.load = function(data) {
-        self.pause();
 		self.loadedData = data.extra;
+        self.pause();
 		self.videoStreamKind = data.extra.kind;
-        if (data.extra.kind == Cons.STREAM_KIND_YOUTUBE) {
+        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
 			self.showYtPlayer();
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
             self.pause();
+
+            var volMod = 1;
+            if (self.videoVolume < 1) {
+                volMod = 100;
+            }
+
+            self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
 
         self.pause();
         self.hideYtPlayer();
         self.showPlayer();
+
 		self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+		self.video.volume = self.videoVolume;
 	};
 
 	this.play = function(time) {
@@ -241,7 +250,7 @@ function Video(videoElement, sTrackElement) {
 			return;
 		}
 
-		if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+		if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
 			this.playYtVideo();
 			return;
 		}
@@ -265,7 +274,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
             return;
         }
@@ -283,7 +292,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.seekYtVideo(time);
         }
 
@@ -296,7 +305,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             return self.ytVideoCurrentTime;
         }
 
@@ -329,17 +338,22 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            self.ytVideoVolume += val;
-        	self.setYtVideoVolume(self.ytVideoVolume);
+        var volMod = 1;
+        if (val > 1) {
+            val /= 100;
+            volMod = 100;
+        }
+
+        self.videoVolume += val;
+        window.localStorage.volume = self.videoVolume;
+
+
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        	self.setYtVideoVolume(self.videoVolume * volMod);
         	return;
         }
 
-        if (val > 1) {
-            val /= 100;
-        }
-
-        self.video.volume = self.video.volume + val;
+        self.video.volume = self.videoVolume;
     };
 
 	this.decreaseVolume = function(val) {
@@ -348,17 +362,23 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            self.ytVideoVolume -= val;
-            self.setYtVideoVolume(self.ytVideoVolume);
+        var volMod = 1;
+        if (val > 1) {
+            val /= 100;
+            volMod = 100;
+        }
+
+        self.videoVolume -= val;
+        window.localStorage.volume = self.videoVolume;
+
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+            self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
 
-        if (val > 1) {
-			val /= 100;
-		}
 
-        self.video.volume = self.video.volume - val;
+
+        self.video.volume = self.videoVolume;
     };
 
 	this.setVolume = function(val) {
@@ -367,18 +387,24 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
-            self.ytVideoVolume = val;
-            self.setYtVideoVolume(self.ytVideoVolume);
+        var volMod = 1;
+        if (val > 1) {
+            val /= 100;
+            volMod = 100;
+        }
+
+        self.videoVolume = val;
+        window.localStorage.volume = self.videoVolume;
+
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+            self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
 
-        if (val > 1) {
-        	val /= 100;
-		}
 
-        self.video.volume = val;
-	};
+
+        self.video.volume = self.videoVolume;
+    };
 
 	this.getDuration = function() {
         if (!self.loadedData) {
@@ -386,7 +412,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind == Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
         }
 
