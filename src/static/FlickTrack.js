@@ -601,8 +601,10 @@ function App(window, document) {
     this.socket.on('streamsync', function(data) {
         data = parseSockData(data);
 
-        if (data.extra.streamDuration) {
-            self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
+        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
+            if (data.extra.streamDuration) {
+                self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
+            }
         }
 
         self.video.canStartStream = false;
@@ -661,7 +663,7 @@ function App(window, document) {
 
         self.hideOutput();
 
-        // handle video end
+        // detect video end
         if (self.video.getDuration() && data.extra.timer >= self.video.getDuration()) {
             if (isNewClient) {
                 self.showOutput('Welcome, the stream has already ended.');
