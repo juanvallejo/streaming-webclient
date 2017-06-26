@@ -424,11 +424,6 @@ function Video(videoElement, sTrackElement) {
     this.on('loadedmetadata', function() {
         self.duration = self.video.duration;
         self.metadataLoaded = true;
-
-        // send stream info to server
-        self.emit('emitsocketdata', ['streamdata', {
-            duration: self.duration
-        }]);
     });
 }
 
