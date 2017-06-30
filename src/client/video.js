@@ -333,21 +333,36 @@ function Video(videoElement, sTrackElement) {
         return this.video;
     };
 
-    this.increaseVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
+    this.getVolume = function() {
+        if(self.videoVolume <= 1) {
+            return self.videoVolume * 100;
         }
+        return self.videoVolume;
+    };
 
+    this.increaseVolume = function(val) {
         var volMod = 1;
-        if (val > 1) {
+        if (val >= 1) {
             val /= 100;
             volMod = 100;
         }
 
-        self.videoVolume += val;
-        window.localStorage.volume = self.videoVolume;
+        if (val === self.videoVolume) {
+            return;
+        }
 
+        self.videoVolume += val;
+        if (self.videoVolume > 1) {
+            self.videoVolume = 1;
+        }
+
+        window.localStorage.volume = self.videoVolume;
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
 
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
@@ -358,19 +373,28 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.decreaseVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
-        }
-
         var volMod = 1;
-        if (val > 1) {
+        if (val >= 1) {
             val /= 100;
             volMod = 100;
         }
 
+        if (val === self.videoVolume) {
+            return;
+        }
+        
         self.videoVolume -= val;
+        if (self.videoVolume < 0) {
+            self.videoVolume = 0;
+        }
+
         window.localStorage.volume = self.videoVolume;
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
 
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
@@ -383,9 +407,8 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.setVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
+        if (val > 100) {
+            val = 100;
         }
 
         var volMod = 1;
@@ -397,12 +420,17 @@ function Video(videoElement, sTrackElement) {
         self.videoVolume = val;
         window.localStorage.volume = self.videoVolume;
 
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
+
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
-
-
 
         self.video.volume = self.videoVolume;
     };

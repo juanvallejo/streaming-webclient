@@ -345,7 +345,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 Chat.prototype = new Emitter();
 
 module.exports = Chat;
-},{"./proto/emitter.js":5}],3:[function(require,module,exports){
+},{"./proto/emitter.js":6}],3:[function(require,module,exports){
 /**
  * application constants
  */
@@ -369,6 +369,354 @@ var Constants = {
 module.exports = Constants;
 },{}],4:[function(require,module,exports){
 /**
+ * Chat handler
+ */
+
+var Emitter = require('./proto/emitter.js');
+
+var CONTROLS_SEARCH = 0;
+var CONTROLS_PREV = 1;
+var CONTROLS_PLAYPAUSE = 2;
+var CONTROLS_NEXT = 3;
+
+var CONTROLS_PLAYPAUSE_PLAY = 0;
+var CONTROLS_PLAYPAUSE_PAUSE = 1;
+
+var INFO_TIME_ELAPSED = 0;
+var INFO_TITLE = 1;
+var INFO_TIME_TOTAL = 2;
+
+var VOLUME_ICON = 0;
+var VOLUME_SLIDER = 1;
+
+var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
+
+function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, seekElem, searchPanel, searchBarElem) {
+    var self = this;
+
+    this.container = container;
+    this.searchPanel = searchPanel;
+    this.searchBar = searchBarElem;
+    this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
+
+    this.volumeSlider = volumeElemCollection.item(VOLUME_SLIDER);
+
+    this.controlSeek = seekElem;
+    this.controlNext = controlsElemCollection.item(CONTROLS_NEXT);
+    this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
+    this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
+
+    this.infoTimeElapsed = infoElemCollection.item(INFO_TIME_ELAPSED);
+    this.infoTimeTotal = infoElemCollection.item(INFO_TIME_TOTAL);
+    this.infoTitle = infoElemCollection.item(INFO_TITLE);
+
+    this.classNameControlActive = 'controls-container-active';
+
+    this.controlsHideTimeout = null;
+    this.hidden = false;
+    this.hasMouseOver = false;
+
+    this.isPlaying = false;
+    this.playbackTimer = 0;
+    this.playbackTotal = 0;
+    this.volume = 50;
+
+    this.volumeSliderActive = false;
+    this.volumeSliderDelta = 0;
+
+    this.callbacks = {};
+
+    this.getSearchPanel = function() {
+        return this.searchPanel;
+    };
+    this.getSearchBar = function() {
+        return this.searchBar;
+    };
+    this.getContainer = function() {
+        return this.container;
+    };
+
+    this.init = function() {
+        var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
+        $(pauseButton).hide();
+    };
+
+    this.getWidth = function() {
+        return this.width;
+    };
+    this.getHeight = function() {
+        return this.height;
+    };
+
+    this.focusInput = function() {
+        this.input.focus();
+        this.isFocused(true);
+    };
+
+    this.show = function(noAnimation) {
+        if(!this.hidden) {
+            return;
+        }
+
+        this.hidden = false;
+        if (noAnimation) {
+            this.container.style.display = 'block';
+            return;
+        }
+        $(this.container).fadeIn();
+    };
+
+    this.hide = function(noAnimation) {
+        if(this.hidden || this.hasMouseOver) {
+            return;
+        }
+
+        this.hidden = true;
+        if (noAnimation) {
+            this.container.style.display = 'none';
+            return;
+        }
+        $(this.container).fadeOut();
+    };
+
+    this.setVolume = function(vol) {
+        self.volume = vol;
+        self.volumeSlider.style.height = vol + "%";
+    };
+
+    this.pause = function() {
+        self.isPlaying= false;
+        var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
+        var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
+
+        $(playButton).show();
+        $(pauseButton).hide();
+
+        clearTimeout(self.seekerTimeout);
+        clearTimeout(self.controlsHideTimeout);
+
+        self.show();
+    };
+
+    this.play = function() {
+        self.isPlaying = true;
+        var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
+        var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
+
+        $(pauseButton).show();
+        $(playButton).hide();
+
+        // advance seeker
+        clearTimeout(self.seekerTimeout);
+        self.seekerTimeout = setTimeout(function timer() {
+            self.playbackTimer++;
+            self.setSeeker(self.playbackTimer, self.playbackTotal)
+            self.infoTimeElapsed.innerHTML = secondsToHumanTime(self.playbackTimer);
+
+            if (self.playbackTotal && self.playbackTimer > self.playbackTotal) {
+                self.pause();
+                return;
+            }
+
+            self.seekerTimeout = setTimeout(timer, 1000)
+        }, 1000);
+
+        // auto-hide user controls
+        if (!self.hasMouseOver) {
+            clearTimeout(self.controlsHideTimeout);
+            self.controlsHideTimeout = setTimeout(function () {
+                self.hide();
+            }, MAX_CONTROLS_HIDE_TIMEOUT);
+        }
+    };
+    
+    this.setMediaTitle = function(title) {
+        this.infoTitle.innerHTML = title;
+    };
+    
+    this.setMediaDuration = function(duration) {
+        if(!duration) {
+            this.infoTimeTotal.innerHTML = "--:--";
+            return;
+        }
+        this.infoTimeTotal.innerHTML = secondsToHumanTime(duration);
+    };
+
+    this.setMediaElapsed = function(elapsedTimeSecs) {
+        var humanTime = secondsToHumanTime(elapsedTimeSecs);
+        this.infoTimeElapsed.innerHTML = humanTime;
+    };
+
+    this.setSeeker = function(current, total) {
+        if(!current) {
+            current = 1;
+        }
+
+        var percent = current / (total || current) * 100;
+        if (percent > 100) {
+            percent = 100;
+        }
+
+        this.controlSeek.style.width = percent + "%";
+        this.playbackTimer = current;
+        this.playbackTotal = total || 0;
+    };
+
+    this.handleSearchButton = function(button, isActive) {
+        if (isActive) {
+            $(button).removeClass(self.classNameControlActive);
+        } else {
+            $(button).addClass(self.classNameControlActive);
+        }
+
+        $(self.searchPanel).slideToggle(function() {
+            if (!isActive) {
+                $(self.searchBar).children().focus();
+            }
+        });
+    };
+
+    this.handlePlayPause = function(button, isActive) {
+        var playButton = $(button).children()[CONTROLS_PLAYPAUSE_PLAY];
+        var pauseButton = $(button).children()[CONTROLS_PLAYPAUSE_PAUSE];
+
+        if (isActive) {
+            $(pauseButton).show();
+            $(playButton).hide();
+        } else {
+            $(playButton).show();
+            $(pauseButton).hide();
+        }
+
+        if (isActive) {
+            self.emit("chatcommand", ["/stream pause"]);
+            return;
+        }
+
+        self.emit("chatcommand", ["/stream play"]);
+    };
+
+    this.handleNextButton = function(button) {
+        self.emit("chatcommand", ["/stream skip"]);
+    };
+
+    this.handlePrevButton = function(button) {
+        self.emit("chatcommand", ["/stream seek 0"]);
+    };
+
+    $(this.searchButton).on('click', function() {
+        var isActive = $(this).hasClass(self.classNameControlActive);
+        self.handleSearchButton(this, isActive);
+    });
+
+    $(this.controlPlayPause).on('click', function() {
+        self.handlePlayPause(this, self.isPlaying);
+    });
+
+    $(this.controlNext).on('click', function() {
+        self.handleNextButton(this);
+    });
+
+    $(this.controlNext).on('click', function() {
+        self.handlePrevButton(this);
+    });
+
+    $(this.volumeSlider.parentNode).on("mousedown", function() {
+        self.volumeSliderActive = true;
+    });
+
+    $(this.container).on("mouseenter", function() {
+        self.hasMouseOver = true;
+    });
+
+    $(this.container).on("mouseleave", function() {
+        self.hasMouseOver = false;
+    });
+
+    $(window).on("mouseup", function() {
+       self.volumeSliderActive = false;
+       self.volumeSliderDelta = 0;
+    });
+
+    // TODO: show percentage while mouse is down
+    $(window).on("mousemove", function(e) {
+        if(self.isPlaying) {
+            self.show();
+
+            if(!self.hasMouseOver) {
+                clearTimeout(self.controlsHideTimeout);
+                self.controlsHideTimeout = setTimeout(function () {
+                    self.hide();
+                }, MAX_CONTROLS_HIDE_TIMEOUT);
+            }
+        }
+
+        if (!self.volumeSliderActive) {
+            return;
+        }
+
+        if (!self.volumeSliderDelta) {
+            self.volumeSliderDelta = e.pageY;
+            return;
+        }
+
+        var delta = self.volumeSliderDelta - e.pageY;
+        self.volumeSliderDelta = e.pageY;
+        if (!delta) {
+            return;
+        }
+
+        // slide up
+        if (delta > 0) {
+            self.emit("streamcontrol", ["increaseVolume", [delta]]);
+            return;
+        }
+
+        // slide down
+        self.emit("streamcontrol", ["decreaseVolume", [delta * -1]]);
+    });
+}
+
+function secondsToHumanTime(secs) {
+    if (secs < 60) {
+        if (secs < 10) {
+            secs = "0" + secs;
+        }
+        return "00:" + secs;
+    }
+
+    var mins = parseInt(secs / 60);
+    if (mins < 60) {
+        if (mins < 10) {
+            mins = "0" + mins;
+        }
+        secs = parseInt(secs % 60);
+        if (secs < 10) {
+            secs = "0" + secs;
+        }
+        return mins + ":" + secs;
+    }
+
+    var hours = parseInt(mins / 60);
+    if (hours < 10) {
+        hours = "0" + hours;
+    }
+    mins = parseInt(mins % 60);
+    if (mins < 10) {
+        mins = "0" + mins;
+    }
+    secs = parseInt(secs % 60);
+    if (secs < 10) {
+        secs = "0" + secs;
+    }
+    return hours + ":" + mins + ":" + secs;
+}
+
+Controls.prototype = new Emitter();
+
+module.exports = Controls;
+},{"./proto/emitter.js":6}],5:[function(require,module,exports){
+/**
  * Main entry point for the client app
  */
 
@@ -377,6 +725,7 @@ var Chat = require('./chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
 var Socket = require('./socket.js');
+var Controls = require('./controls.js');
 
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
@@ -392,16 +741,31 @@ function App(window, document) {
     this.overlay = document.getElementById("overlay");
     this.out = document.getElementById("out");
     this.outTimeout = null;
-
-    this.chat = new Chat(document.getElementById('chat-container'),
+    
+    this.chat = new Chat(
+        document.getElementById('chat-container'),
         document.getElementById('chat-container-view'),
         document.getElementById('chat-container-input').children[0],
         document.getElementById('chat-container-username-input'),
-        document.getElementById('chat-container-overlay'));
+        document.getElementById('chat-container-overlay')
+    );
 
     this.socket = new Socket(getSocketAddr(window));
-    this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
+    this.video = new VideoPlayer(
+        document.createElement('video'), 
+        document.createElement('track')
+    );
     this.banner = new Banner(document.getElementById("banner"));
+
+    this.controls = new Controls(
+        document.getElementById("controls-container"), 
+        document.getElementsByClassName("controls-container-button"),
+        document.getElementsByClassName("controls-container-info-inner"),
+        document.getElementsByClassName("controls-container-volume-elem"),
+        document.getElementById("controls-container-seek"),
+        document.getElementById("controls-container-panel"),
+        document.getElementById("controls-container-panel-searchbar")
+    );
 
     // set application states
     this.initVideo = false;
@@ -444,6 +808,26 @@ function App(window, document) {
             self.video.canStartStream = false;
         });
 
+        this.video.on('volumeupdate', function(vol) {
+            self.controls.setVolume(vol);
+        });
+
+        // init user controls
+        this.controls.init();
+        this.controls.setVolume(this.video.getVolume())
+        this.controls.on("chatcommand", function(cmd) {
+            self.chat.sendText(self.socket, "system", cmd);
+        });
+
+        this.controls.on("streamcontrol", function(method, args) {
+            if(!self.video[method]) {
+                self.banner.showBanner("chat command attempted to control stream with an invalid operation (" + method + ").");
+                return;
+            }
+
+            self.video[method].apply(self, args);
+        });
+        
         // handle chat events
         this.chat.on('submit', function(user, msg) {
             this.sendText(self.socket, user, msg);
@@ -529,6 +913,7 @@ function App(window, document) {
         self.video.savedTimer = self.video.getTime();
 
         self.video.pause();
+        self.controls.pause();
         self.video.canStartStream = false;
         self.connectionLost = true;
 
@@ -601,11 +986,18 @@ function App(window, document) {
     this.socket.on('streamsync', function(data) {
         data = parseSockData(data);
 
+        // TODO: server-side information parsing about stream
+        self.controls.setMediaTitle("No stream data available");
+
         if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
             if (data.extra.streamDuration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
             }
         }
+
+        self.controls.setMediaDuration(data.extra.streamDuration);
+        self.controls.setMediaElapsed(data.extra.timer);
+        self.controls.setSeeker(data.extra.timer, data.extra.streamDuration);
 
         self.video.canStartStream = false;
 
@@ -638,6 +1030,7 @@ function App(window, document) {
 
         if (!data.extra.isPlaying) {
             self.video.pause();
+            self.controls.pause();
 
             if (data.extra.isStopped) {
                 if(self.video.sourceFileError) {
@@ -683,6 +1076,7 @@ function App(window, document) {
         }
 
         self.video.play();
+        self.controls.play();
     });
 
     this.socket.on('info_clienterror', function(data) {
@@ -787,7 +1181,7 @@ function parseSockData(b64) {
 }
 
 window.App = App;
-},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./socket.js":6,"./video.js":7}],5:[function(require,module,exports){
+},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./controls.js":4,"./socket.js":7,"./video.js":8}],6:[function(require,module,exports){
 /**
  * Emitter prototype for objects that send and receive events
  */
@@ -815,7 +1209,7 @@ function Emitter() {
 }
 
 module.exports = Emitter;
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /**
  * application socket utils, emitters, and listeners
  */
@@ -906,7 +1300,7 @@ function Socket(url) {
 Socket.prototype = new Emitter();
 
 module.exports = Socket;
-},{"./proto/emitter.js":5}],7:[function(require,module,exports){
+},{"./proto/emitter.js":6}],8:[function(require,module,exports){
 /**
  * handles local video streaming
  */
@@ -1242,21 +1636,36 @@ function Video(videoElement, sTrackElement) {
         return this.video;
     };
 
-    this.increaseVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
+    this.getVolume = function() {
+        if(self.videoVolume <= 1) {
+            return self.videoVolume * 100;
         }
+        return self.videoVolume;
+    };
 
+    this.increaseVolume = function(val) {
         var volMod = 1;
-        if (val > 1) {
+        if (val >= 1) {
             val /= 100;
             volMod = 100;
         }
 
-        self.videoVolume += val;
-        window.localStorage.volume = self.videoVolume;
+        if (val === self.videoVolume) {
+            return;
+        }
 
+        self.videoVolume += val;
+        if (self.videoVolume > 1) {
+            self.videoVolume = 1;
+        }
+
+        window.localStorage.volume = self.videoVolume;
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
 
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
@@ -1267,19 +1676,28 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.decreaseVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
-        }
-
         var volMod = 1;
-        if (val > 1) {
+        if (val >= 1) {
             val /= 100;
             volMod = 100;
         }
 
+        if (val === self.videoVolume) {
+            return;
+        }
+        
         self.videoVolume -= val;
+        if (self.videoVolume < 0) {
+            self.videoVolume = 0;
+        }
+
         window.localStorage.volume = self.videoVolume;
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
 
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
@@ -1292,9 +1710,8 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.setVolume = function(val) {
-        if (!self.loadedData) {
-            console.log("WARN:", 'attempt to set volume with no data loaded.');
-            return;
+        if (val > 100) {
+            val = 100;
         }
 
         var volMod = 1;
@@ -1306,12 +1723,17 @@ function Video(videoElement, sTrackElement) {
         self.videoVolume = val;
         window.localStorage.volume = self.videoVolume;
 
+        self.emit("volumeupdate", [self.videoVolume * volMod]);
+
+        if (!self.loadedData) {
+            console.log("WARN:", 'attempt to set volume with no data loaded.');
+            return;
+        }
+
         if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
-
-
 
         self.video.volume = self.videoVolume;
     };
@@ -1367,4 +1789,4 @@ function ytDurationToSeconds(ytDuration) {
 
 module.exports = Video;
 
-},{"./constants.js":3,"./proto/emitter.js":5}]},{},[4]);
+},{"./constants.js":3,"./proto/emitter.js":6}]},{},[5]);

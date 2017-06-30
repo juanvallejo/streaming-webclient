@@ -7,6 +7,7 @@ var Chat = require('./chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
 var Socket = require('./socket.js');
+var Controls = require('./controls.js');
 
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
@@ -22,16 +23,31 @@ function App(window, document) {
     this.overlay = document.getElementById("overlay");
     this.out = document.getElementById("out");
     this.outTimeout = null;
-
-    this.chat = new Chat(document.getElementById('chat-container'),
+    
+    this.chat = new Chat(
+        document.getElementById('chat-container'),
         document.getElementById('chat-container-view'),
         document.getElementById('chat-container-input').children[0],
         document.getElementById('chat-container-username-input'),
-        document.getElementById('chat-container-overlay'));
+        document.getElementById('chat-container-overlay')
+    );
 
     this.socket = new Socket(getSocketAddr(window));
-    this.video = new VideoPlayer(document.createElement('video'), document.createElement('track'));
+    this.video = new VideoPlayer(
+        document.createElement('video'), 
+        document.createElement('track')
+    );
     this.banner = new Banner(document.getElementById("banner"));
+
+    this.controls = new Controls(
+        document.getElementById("controls-container"), 
+        document.getElementsByClassName("controls-container-button"),
+        document.getElementsByClassName("controls-container-info-inner"),
+        document.getElementsByClassName("controls-container-volume-elem"),
+        document.getElementById("controls-container-seek"),
+        document.getElementById("controls-container-panel"),
+        document.getElementById("controls-container-panel-searchbar")
+    );
 
     // set application states
     this.initVideo = false;
@@ -74,6 +90,26 @@ function App(window, document) {
             self.video.canStartStream = false;
         });
 
+        this.video.on('volumeupdate', function(vol) {
+            self.controls.setVolume(vol);
+        });
+
+        // init user controls
+        this.controls.init();
+        this.controls.setVolume(this.video.getVolume())
+        this.controls.on("chatcommand", function(cmd) {
+            self.chat.sendText(self.socket, "system", cmd);
+        });
+
+        this.controls.on("streamcontrol", function(method, args) {
+            if(!self.video[method]) {
+                self.banner.showBanner("chat command attempted to control stream with an invalid operation (" + method + ").");
+                return;
+            }
+
+            self.video[method].apply(self, args);
+        });
+        
         // handle chat events
         this.chat.on('submit', function(user, msg) {
             this.sendText(self.socket, user, msg);
@@ -159,6 +195,7 @@ function App(window, document) {
         self.video.savedTimer = self.video.getTime();
 
         self.video.pause();
+        self.controls.pause();
         self.video.canStartStream = false;
         self.connectionLost = true;
 
@@ -231,11 +268,18 @@ function App(window, document) {
     this.socket.on('streamsync', function(data) {
         data = parseSockData(data);
 
+        // TODO: server-side information parsing about stream
+        self.controls.setMediaTitle("No stream data available");
+
         if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
             if (data.extra.streamDuration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
             }
         }
+
+        self.controls.setMediaDuration(data.extra.streamDuration);
+        self.controls.setMediaElapsed(data.extra.timer);
+        self.controls.setSeeker(data.extra.timer, data.extra.streamDuration);
 
         self.video.canStartStream = false;
 
@@ -268,6 +312,7 @@ function App(window, document) {
 
         if (!data.extra.isPlaying) {
             self.video.pause();
+            self.controls.pause();
 
             if (data.extra.isStopped) {
                 if(self.video.sourceFileError) {
@@ -313,6 +358,7 @@ function App(window, document) {
         }
 
         self.video.play();
+        self.controls.play();
     });
 
     this.socket.on('info_clienterror', function(data) {

@@ -4,8 +4,9 @@
 	<meta charset="utf-8" />
 	<title>FlickTrack</title>
 	<link rel="stylesheet" href="/src/static/reset.css" />
-	<script src="/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
-	<script src="/src/static/FlickTrack.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <script src="/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="/src/static/FlickTrack.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css?family=Questrial');
 .overlay {
@@ -27,21 +28,235 @@
 #out {
 	cursor: pointer;
 }
+
+.user-controls {
+    background: rgba(255,255,255,0.08);
+    border-radius: 0 0 0 1px;
+    color: rgba(255,255,255,0.65);
+    position: absolute;
+    z-index: 2;
+}
+#controls-container {
+    border-top: 1px solid rgba(255,255,255,0.02);
+    border-right: 1px solid rgba(255,255,255,0.05);
+    min-width: 420px;
+    width: 550px;
+    max-width: 50%;
+    height: 100px;
+    bottom: 0;
+    left: 0;
+    position: absolute;
+}
+
+    #controls-container-panel {
+        border-top: 1px solid rgba(255,255,255,0.05);
+        border-right: 1px solid rgba(255,255,255,0.05);
+        width: 100%;
+        height: 500%;
+        max-height: 500px;
+        background: inherit;
+        position: absolute;
+        left: 0;
+
+        display:none;
+
+        bottom: 100px;
+        z-index: 9;
+    }
+    #controls-container-panel-closearea {
+
+    }
+        .closearea {
+            width: 100%;
+            height: 15%;
+            position: absolute;
+            top: -16%;
+            text-align: center;
+            left: 0;
+        }
+            .closearea-close {
+                width: 20%;
+                height: 100%;
+                text-align: center;
+                display: inline-block;
+            }
+                .closearea-close span {
+                    font-size: 1.5em;
+                    display: table;
+                    width: 100%;
+                    height: 100%;
+                }
+                    .closearea-close span::before {
+                        display: table-cell;
+                        vertical-align: middle;
+                    }
+    #controls-container-panel-searchbar {
+        width: 100%;
+        height: 10%;
+        /*background: rgba(0,0,0,0.15);*/
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+        #controls-container-panel-searchbar input {
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            border: 0;
+            font: inherit;
+            color: inherit;
+            vertical-align: middle;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+        }
+
+    #controls-container-panel-results {
+        width: 100%;
+        height: 90%;
+        overflow-y: scroll;
+
+        display: table;
+    }
+        #controls-container-panel-results span {
+            color: rgba(255,255,255,0.3);
+            width: 100%;
+            text-align: center;
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .controls-container-panel-result {
+            width: 100%;
+            height: 20%;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+            .controls-container-panel-result:first-child {
+                border-top: 0;
+            }
+
+            .controls-container-panel-result-thumb {
+                width: 20%;
+                height: 100%;
+                border-right: 1px solid rgba(255,255,255,0.05);
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            .controls-container-panel-result-info {
+                width: 80%;
+                height: 100%;
+                position: absolute;
+                top: 0;
+                right: 0;
+            }
+
+    #controls-container-vol {
+        width: 15%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        right: 0;
+        cursor: default;
+        border-left: 1px solid rgba(255,255,255,0.05);
+    }
+        #controls-container-vol-icon {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+            #controls-container-vol-icon span {
+                display: table;
+                width: 100%;
+                text-align: center;
+                height: 100%;
+            }
+                #controls-container-vol-icon span::before {
+                    display: table-cell;
+                    vertical-align: middle;
+                }
+
+        #controls-container-vol-slider {
+            width: 100%;
+            height: 72%;
+            border-top: 1.5px solid rgba(52,125,49,0.67);
+            background: rgba(70, 180, 75, 0.4);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            z-index: 2;
+        }
+    #controls-container-info {
+        width: 85%;
+        height: 10%;
+        text-align: center;
+        border-top: 1px solid rgba(255,255,255,0.01);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+    }
+        .controls-container-info-inner {
+            padding: 0 0 2.7% 0;
+            text-align: center;
+            border-left: 1px solid rgba(255,255,255,0.01);
+            height: 100%;
+        }
+            .controls-container-info-inner:first-child {
+                border-left: 0;
+            }
+        #controls-container-info-left {
+
+        }
+        #controls-container-info-middle {
+
+        }
+        #controls-container-info-right {
+
+        }
+    #controls-container-seek {
+        width: 0;
+        position: absolute;
+        display: block;
+        height:1%;
+        background: rgba(255,255,255,1.0);
+        top: -1%;
+        left: 0;
+        z-index: 2;
+    }
+    #controls-container-controls {
+        width: 85%;
+        height: 60%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+        #controls-container-controls-search {
+            width: 20%;
+            border-left: 0;
+        }
+        .controls-container-button {
+            text-align: center;
+            border-left: 1px solid rgba(255,255,255,0.05);
+
+        }
+            .controls-container-button:active, .controls-container-active {
+                background: rgba(0,94,129,0.5);
+            }
+            .controls-container-button span {
+                display: inline-block;
+            }
+
 #chat-container {
-	background: rgba(255,255,255,0.05);
-	border-radius: 0 0 0 1px;
-	color: rgba(255,255,255,0.65);
-	min-width: 300px;
-	width: 400px;
-	max-width: 55%;
-	min-height: 50%;
-	height: 600px;
-	max-height: 600px;
-	position: absolute;
-	overflow: hidden;
-	top: 0;
-	right: 0;
-	z-index: 2;
+    min-width: 300px;
+    width: 400px;
+    max-width: 55%;
+    min-height: 50%;
+    height: 600px;
+    max-height: 600px;
+    top: 0;
+    right: 0;
 }
 	#chat-container-input {
 		position: absolute;
@@ -109,6 +324,15 @@
 			font: inherit;
 			top: 0;
 }
+.noselect {
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                          supported by Chrome and Opera */
+}
 .no-border {
 	border: 0;
 }
@@ -142,6 +366,7 @@
 body {
 	font: 300 16px 'Questrial';
 	background: black;
+    overflow: hidden;
 	z-index: 999;
 }
 video, #yt-video {
@@ -164,7 +389,59 @@ video, #yt-video {
 <div id="banner-container" class="full-size-hor middle-container">
 	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
 </div>
-<div id="chat-container">
+<div id="controls-container" class="user-controls noselect">
+    <div id="controls-container-seek"></div>
+    <div id="controls-container-vol">
+        <div id="controls-container-vol-icon">
+            <span class="fa fa-volume-up middle-container controls-container-volume-elem"></span>
+        </div>
+        <div id="controls-container-vol-slider" class="controls-container-volume-elem noselect"></div>
+    </div>
+    <div id="controls-container-controls" class="middle-container noselect">
+        <div id="controls-container-controls-search" class="controls-container-button middle">
+            <span class="fa fa-search"></span>
+        </div>
+        <div class="controls-container-button middle">
+            <span class="fa fa-step-backward"></span>
+        </div>
+        <div class="controls-container-button middle">
+            <span class="fa fa-play controls-container-button-playpause"></span>
+            <span class="fa fa-pause controls-container-button-playpause"></span>
+        </div>
+        <div class="controls-container-button middle">
+            <span class="fa fa-step-forward"></span>
+        </div>
+    </div>
+    <div id="controls-container-info" class="middle-container noselect">
+        <div id="controls-container-info-left" class="controls-container-info-inner middle">
+            00:00
+        </div>
+        <div id="controls-container-info-middle" class="controls-container-info-inner middle">
+            No media playing
+        </div>
+        <div id="controls-container-info-right" class="controls-container-info-inner middle">
+            00:00
+        </div>
+    </div>
+    <div id="controls-container-panel">
+        <!--<div class="closearea middle-container">-->
+        <!--<div id="controls-container-panel-closearea-close" class="closearea-close">-->
+        <!--<span class="fa fa-close"></span>-->
+        <!--</div>-->
+        <!--</div>-->
+        <div id="controls-container-panel-searchbar">
+            <input type="text" placeholder="search videos..." />
+        </div>
+        <div id="controls-container-panel-results">
+            <!--<div class="controls-container-panel-result">-->
+                <!--<div class="controls-container-panel-result-thumb"></div>-->
+                <!--<div class="controls-container-panel-result-info"></div>-->
+            <!--</div>-->
+            <span>This feature is not yet enabled. <br />Use <i class="text-hl-name">/stream queue &lt;url&gt;</i> to queue a stream.</span>
+        </div>
+    </div>
+</div>
+<div id="chat-container" class="user-controls">
 		<div id="chat-container-view"></div>
 		<div id="chat-container-input">
 			<input type="text" class="chat-container-input" />
