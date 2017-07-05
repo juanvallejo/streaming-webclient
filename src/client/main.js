@@ -44,9 +44,8 @@ function App(window, document) {
         document.getElementsByClassName("controls-container-button"),
         document.getElementsByClassName("controls-container-info-inner"),
         document.getElementsByClassName("controls-container-volume-elem"),
-        document.getElementById("controls-container-seek"),
-        document.getElementById("controls-container-panel"),
-        document.getElementById("controls-container-panel-searchbar")
+        document.getElementsByClassName("controls-container-panel-elem"),
+        document.getElementById("controls-container-seek")
     );
 
     // set application states
@@ -188,6 +187,9 @@ function App(window, document) {
             self.connectionLost = false;
             self.banner.showBanner('Connection reestablished. Resuming stream.');
         }
+
+        // request current queue status
+        self.socket.send("request_queuesync");
     });
 
     this.socket.on('disconnect', function() {
@@ -263,6 +265,11 @@ function App(window, document) {
         }
 
         self.socket.send("request_streamsync");
+        self.socket.send("request_queuesync");
+    });
+
+    this.socket.on('queuesync', function(data) {
+        self.controls.updateQueue(data.extra.items || []);
     });
 
     this.socket.on('streamsync', function(data) {
@@ -303,7 +310,7 @@ function App(window, document) {
         }
 
         // safari bug fix - currentTime will not take
-        // effect until a second afterthe page has loaded
+        // effect until a second after the page has loaded
         if (!self.video.getTime() && self.video.videoStreamKind === Cons.STREAM_KIND_LOCAL) {
             setTimeout(function() {
                 self.video.setTime(data.extra.timer + 1);

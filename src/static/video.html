@@ -57,9 +57,8 @@
         background: inherit;
         position: absolute;
         left: 0;
-
         display:none;
-
+        overflow: scroll;
         bottom: 100px;
         z-index: 9;
     }
@@ -109,28 +108,38 @@
             height: 100%;
         }
 
-    #controls-container-panel-results {
-        width: 100%;
-        height: 90%;
-        overflow-y: scroll;
+    #controls-container-panel-queue {
 
-        display: table;
     }
-        #controls-container-panel-results span {
+    #controls-container-panel-results {
+        display: none;
+    }
+        .controls-container-panel-inner {
+            width: 100%;
+            height: 90%;
+            overflow-y: scroll;
+            display: table;
+        }
+        .controls-container-panel-inner span {
             color: rgba(255,255,255,0.3);
             width: 100%;
             text-align: center;
             display: table-cell;
             vertical-align: middle;
         }
+
         .controls-container-panel-result {
             width: 100%;
             height: 20%;
             border-top: 1px solid rgba(255,255,255,0.05);
             position: relative;
+            cursor: default;
         }
             .controls-container-panel-result:first-child {
                 border-top: 0;
+            }
+            .controls-container-panel-result:active {
+                background: rgba(0,94,129,0.5);
             }
 
             .controls-container-panel-result-thumb {
@@ -140,7 +149,14 @@
                 position: absolute;
                 top: 0;
                 left: 0;
+                display: table;
+                text-align: center;
             }
+                .controls-container-panel-result-thumb span {
+                    display: table-cell;
+                    vertical-align: middle;
+                    font-size: 2em;
+                }
 
             .controls-container-panel-result-info {
                 width: 80%;
@@ -148,7 +164,13 @@
                 position: absolute;
                 top: 0;
                 right: 0;
+                display: table;
+                text-align: center;
             }
+                .controls-container-panel-result-info span {
+                    display: table-cell;
+                    vertical-align: middle;
+                }
 
     #controls-container-vol {
         width: 15%;
@@ -429,15 +451,27 @@ video, #yt-video {
         <!--<span class="fa fa-close"></span>-->
         <!--</div>-->
         <!--</div>-->
-        <div id="controls-container-panel-searchbar">
+        <div id="controls-container-panel-searchbar" class="controls-container-panel-elem">
             <input type="text" placeholder="search videos..." />
         </div>
-        <div id="controls-container-panel-results">
+        <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem">
             <!--<div class="controls-container-panel-result">-->
                 <!--<div class="controls-container-panel-result-thumb"></div>-->
                 <!--<div class="controls-container-panel-result-info"></div>-->
             <!--</div>-->
-            <span>This feature is not yet enabled. <br />Use <i class="text-hl-name">/stream queue &lt;url&gt;</i> to queue a stream.</span>
+            <!--<span>This feature is not yet enabled. <br />Use <i class="text-hl-name">/stream queue &lt;url&gt;</i> to queue a stream.</span>-->
+        </div>
+        <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">
+            <!--<div class="controls-container-panel-result">-->
+                <!--<div class="controls-container-panel-result-thumb">-->
+                    <!--<span class="fa fa-youtube"></span>-->
+                    <!--&lt;!&ndash;<span class="fa fa-film"></span>&ndash;&gt;-->
+                <!--</div>-->
+                <!--<div class="controls-container-panel-result-info">-->
+                    <!--<span>Untitled<br /><br />https://www.youtube.com/watch?v=08765hgf</span>-->
+                <!--</div>-->
+            <!--</div>-->
+            <span>Loading queue...</span>
         </div>
     </div>
 </div>

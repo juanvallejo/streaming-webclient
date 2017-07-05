@@ -2,6 +2,8 @@
  * Chat handler
  */
 
+var Result = require('./result.js')
+
 var Emitter = require('./proto/emitter.js');
 
 var CONTROLS_SEARCH = 0;
@@ -16,17 +18,19 @@ var INFO_TIME_ELAPSED = 0;
 var INFO_TITLE = 1;
 var INFO_TIME_TOTAL = 2;
 
+var SEARCH_PANEL_SEARCHBAR = 0;
+var SEARCH_PANEL_RESULTS = 1;
+var SEARCH_PANEL_QUEUE = 2;
+
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
 
 var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
 
-function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, seekElem, searchPanel, searchBarElem) {
+function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
     var self = this;
 
     this.container = container;
-    this.searchPanel = searchPanel;
-    this.searchBar = searchBarElem;
     this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
 
     this.volumeSlider = volumeElemCollection.item(VOLUME_SLIDER);
@@ -35,6 +39,10 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     this.controlNext = controlsElemCollection.item(CONTROLS_NEXT);
     this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
     this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
+
+    this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
+    this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
+    this.panelQueue = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE);
 
     this.infoTimeElapsed = infoElemCollection.item(INFO_TIME_ELAPSED);
     this.infoTimeTotal = infoElemCollection.item(INFO_TIME_TOTAL);
@@ -60,13 +68,16 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         return this.searchPanel;
     };
     this.getSearchBar = function() {
-        return this.searchBar;
+        return this.panelSearchBar;
     };
     this.getContainer = function() {
         return this.container;
     };
 
     this.init = function() {
+        // display queue
+        $(self.searchButton).click();
+
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
     };
@@ -191,6 +202,20 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         this.playbackTimer = current;
         this.playbackTotal = total || 0;
     };
+    
+    this.updateQueue = function(items) {
+        self.panelQueue.innerHTML = "";
+
+        if (!items.length) {
+            self.panelQueue.innerHTML = "<span>No items in the queue.</span>";
+            return;
+        }
+
+        for(var i = 0; i < items.length; i++) {
+            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            item.appendTo(self.panelQueue);
+        }
+    };
 
     this.handleSearchButton = function(button, isActive) {
         if (isActive) {
@@ -199,9 +224,9 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
             $(button).addClass(self.classNameControlActive);
         }
 
-        $(self.searchPanel).slideToggle(function() {
+        $(self.panelQueue.parentNode).slideToggle(function() {
             if (!isActive) {
-                $(self.searchBar).children().focus();
+                $(self.panelSearchBar).children().focus();
             }
         });
     };
@@ -247,7 +272,7 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.handleNextButton(this);
     });
 
-    $(this.controlNext).on('click', function() {
+    $(this.controlPrev).on('click', function() {
         self.handlePrevButton(this);
     });
 

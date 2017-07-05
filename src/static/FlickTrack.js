@@ -372,6 +372,8 @@ module.exports = Constants;
  * Chat handler
  */
 
+var Result = require('./result.js')
+
 var Emitter = require('./proto/emitter.js');
 
 var CONTROLS_SEARCH = 0;
@@ -386,17 +388,19 @@ var INFO_TIME_ELAPSED = 0;
 var INFO_TITLE = 1;
 var INFO_TIME_TOTAL = 2;
 
+var SEARCH_PANEL_SEARCHBAR = 0;
+var SEARCH_PANEL_RESULTS = 1;
+var SEARCH_PANEL_QUEUE = 2;
+
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
 
 var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
 
-function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, seekElem, searchPanel, searchBarElem) {
+function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
     var self = this;
 
     this.container = container;
-    this.searchPanel = searchPanel;
-    this.searchBar = searchBarElem;
     this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
 
     this.volumeSlider = volumeElemCollection.item(VOLUME_SLIDER);
@@ -405,6 +409,10 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     this.controlNext = controlsElemCollection.item(CONTROLS_NEXT);
     this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
     this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
+
+    this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
+    this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
+    this.panelQueue = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE);
 
     this.infoTimeElapsed = infoElemCollection.item(INFO_TIME_ELAPSED);
     this.infoTimeTotal = infoElemCollection.item(INFO_TIME_TOTAL);
@@ -430,13 +438,16 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         return this.searchPanel;
     };
     this.getSearchBar = function() {
-        return this.searchBar;
+        return this.panelSearchBar;
     };
     this.getContainer = function() {
         return this.container;
     };
 
     this.init = function() {
+        // display queue
+        $(self.searchButton).click();
+
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
     };
@@ -561,6 +572,20 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         this.playbackTimer = current;
         this.playbackTotal = total || 0;
     };
+    
+    this.updateQueue = function(items) {
+        self.panelQueue.innerHTML = "";
+
+        if (!items.length) {
+            self.panelQueue.innerHTML = "<span>No items in the queue.</span>";
+            return;
+        }
+
+        for(var i = 0; i < items.length; i++) {
+            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            item.appendTo(self.panelQueue);
+        }
+    };
 
     this.handleSearchButton = function(button, isActive) {
         if (isActive) {
@@ -569,9 +594,9 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
             $(button).addClass(self.classNameControlActive);
         }
 
-        $(self.searchPanel).slideToggle(function() {
+        $(self.panelQueue.parentNode).slideToggle(function() {
             if (!isActive) {
-                $(self.searchBar).children().focus();
+                $(self.panelSearchBar).children().focus();
             }
         });
     };
@@ -617,7 +642,7 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.handleNextButton(this);
     });
 
-    $(this.controlNext).on('click', function() {
+    $(this.controlPrev).on('click', function() {
         self.handlePrevButton(this);
     });
 
@@ -715,7 +740,7 @@ function secondsToHumanTime(secs) {
 Controls.prototype = new Emitter();
 
 module.exports = Controls;
-},{"./proto/emitter.js":6}],5:[function(require,module,exports){
+},{"./proto/emitter.js":6,"./result.js":7}],5:[function(require,module,exports){
 /**
  * Main entry point for the client app
  */
@@ -762,9 +787,8 @@ function App(window, document) {
         document.getElementsByClassName("controls-container-button"),
         document.getElementsByClassName("controls-container-info-inner"),
         document.getElementsByClassName("controls-container-volume-elem"),
-        document.getElementById("controls-container-seek"),
-        document.getElementById("controls-container-panel"),
-        document.getElementById("controls-container-panel-searchbar")
+        document.getElementsByClassName("controls-container-panel-elem"),
+        document.getElementById("controls-container-seek")
     );
 
     // set application states
@@ -906,6 +930,9 @@ function App(window, document) {
             self.connectionLost = false;
             self.banner.showBanner('Connection reestablished. Resuming stream.');
         }
+
+        // request current queue status
+        self.socket.send("request_queuesync");
     });
 
     this.socket.on('disconnect', function() {
@@ -981,6 +1008,11 @@ function App(window, document) {
         }
 
         self.socket.send("request_streamsync");
+        self.socket.send("request_queuesync");
+    });
+
+    this.socket.on('queuesync', function(data) {
+        self.controls.updateQueue(data.extra.items || []);
     });
 
     this.socket.on('streamsync', function(data) {
@@ -1021,7 +1053,7 @@ function App(window, document) {
         }
 
         // safari bug fix - currentTime will not take
-        // effect until a second afterthe page has loaded
+        // effect until a second after the page has loaded
         if (!self.video.getTime() && self.video.videoStreamKind === Cons.STREAM_KIND_LOCAL) {
             setTimeout(function() {
                 self.video.setTime(data.extra.timer + 1);
@@ -1181,7 +1213,7 @@ function parseSockData(b64) {
 }
 
 window.App = App;
-},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./controls.js":4,"./socket.js":7,"./video.js":8}],6:[function(require,module,exports){
+},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./controls.js":4,"./socket.js":8,"./video.js":9}],6:[function(require,module,exports){
 /**
  * Emitter prototype for objects that send and receive events
  */
@@ -1210,6 +1242,61 @@ function Emitter() {
 
 module.exports = Emitter;
 },{}],7:[function(require,module,exports){
+var Cons = require('./constants.js');
+
+function Result(name, kind, url, thumb) {
+    var self = this;
+
+    this.name = name || "Untitled";
+    this.kind = kind || Cons.STREAM_KIND_LOCAL;
+    this.url = url;
+
+    this.container = document.createElement("div");
+    this.container.className = "controls-container-panel-result";
+
+    this.thumb = document.createElement("div");
+    this.thumb.className = "controls-container-panel-result-thumb";
+
+    this.thumbSpan = document.createElement("span");
+    this.thumbImg = new Image();
+
+    if (!thumb) {
+        addThumbSpanClass(this.thumbSpan, kind)
+    } else {
+        this.thumbImg.src = thumb;
+        this.thumbSpan.appendChild(this.thumbImg);
+
+        // if error, default to above case
+        this.thumbImg.addEventListener("error", function() {
+            addThumbSpanClass(self.thumbSpan, self.kind);
+        });
+    }
+
+    this.thumb.appendChild(this.thumbSpan);
+
+    this.info = document.createElement("div");
+    this.info.className = "controls-container-panel-result-info";
+    this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.url + "</span>";
+
+    // build sub-tree
+    this.container.appendChild(this.thumb);
+    this.container.appendChild(this.info);
+
+    this.appendTo = function(elem) {
+        elem.appendChild(self.container);
+    }
+}
+
+module.exports = Result;
+
+function addThumbSpanClass(span, kind) {
+    if (kind === Cons.STREAM_KIND_YOUTUBE) {
+        span.className = "fa fa-youtube";
+    } else {
+        span.className = "fa fa-film";
+    }
+}
+},{"./constants.js":3}],8:[function(require,module,exports){
 /**
  * application socket utils, emitters, and listeners
  */
@@ -1300,7 +1387,7 @@ function Socket(url) {
 Socket.prototype = new Emitter();
 
 module.exports = Socket;
-},{"./proto/emitter.js":6}],8:[function(require,module,exports){
+},{"./proto/emitter.js":6}],9:[function(require,module,exports){
 /**
  * handles local video streaming
  */
