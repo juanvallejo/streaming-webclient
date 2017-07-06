@@ -36,6 +36,7 @@
     position: absolute;
     z-index: 2;
 }
+
 #controls-container {
     border-top: 1px solid rgba(255,255,255,0.02);
     border-right: 1px solid rgba(255,255,255,0.05);
@@ -57,8 +58,8 @@
         background: inherit;
         position: absolute;
         left: 0;
-        display:none;
-        overflow: scroll;
+        display: none;
+        overflow: hidden;
         bottom: 100px;
         z-index: 9;
     }
@@ -118,19 +119,26 @@
             width: 100%;
             height: 90%;
             overflow-y: scroll;
-            display: table;
+            padding-right: 15px;
+            display: inline-block;
         }
-        .controls-container-panel-inner span {
+        .controls-container-panel-inner span.message-wrapper {
             color: rgba(255,255,255,0.3);
             width: 100%;
+            height: 100%;
             text-align: center;
-            display: table-cell;
-            vertical-align: middle;
+            display: table;
         }
+            .controls-container-panel-inner span.message-inner {
+                display: table-cell;
+                vertical-align: middle;
+                text-align: center;
+            }
 
         .controls-container-panel-result {
             width: 100%;
             height: 20%;
+            min-height: 50px;
             border-top: 1px solid rgba(255,255,255,0.05);
             position: relative;
             cursor: default;
@@ -155,8 +163,12 @@
                 .controls-container-panel-result-thumb span {
                     display: table-cell;
                     vertical-align: middle;
+                    text-align: center;
                     font-size: 2em;
                 }
+                    .controls-container-panel-result-thumb span img {
+                        vertical-align: middle;
+                    }
 
             .controls-container-panel-result-info {
                 width: 80%;
@@ -210,6 +222,7 @@
             left: 0;
             z-index: 2;
         }
+
     #controls-container-info {
         width: 85%;
         height: 10%;
@@ -277,6 +290,8 @@
     min-height: 50%;
     height: 600px;
     max-height: 600px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-left: 1px solid rgba(255,255,255,0.05);
     top: 0;
     right: 0;
 }
@@ -290,7 +305,7 @@
 	}
 		#chat-container-input input {
 			border-width: 1px 0 0 0;
-			border-color: rgba(255,255,255,0.1);
+			border-color: rgba(255,255,255,0.15);
 			position: absolute;
 			padding: 0 2%;
 			left: 0;
@@ -361,6 +376,15 @@
 .middle-container {
 	display: table;
 }
+.opacity-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(0,0,0);
+    z-index: -1;
+}
 .full-size {
 	width: 100%;
 	height: 100%;
@@ -385,6 +409,9 @@
 .text-white {
 	color: rgba(255,255,255, 0.8);
 }
+body, html {
+    height: 100%;
+}
 body {
 	font: 300 16px 'Questrial';
 	background: black;
@@ -404,7 +431,7 @@ video, #yt-video {
 }
 </style>
 </head>
-<body>
+<body class="noselect">
 <div id="overlay" class="overlay middle-container">
 	<div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
 </div>
@@ -412,6 +439,7 @@ video, #yt-video {
 	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
 </div>
 <div id="controls-container" class="user-controls noselect">
+    <div class="opacity-overlay"></div>
     <div id="controls-container-seek"></div>
     <div id="controls-container-vol">
         <div id="controls-container-vol-icon">
@@ -446,21 +474,11 @@ video, #yt-video {
         </div>
     </div>
     <div id="controls-container-panel">
-        <!--<div class="closearea middle-container">-->
-        <!--<div id="controls-container-panel-closearea-close" class="closearea-close">-->
-        <!--<span class="fa fa-close"></span>-->
-        <!--</div>-->
-        <!--</div>-->
+        <div class="opacity-overlay"></div>
         <div id="controls-container-panel-searchbar" class="controls-container-panel-elem">
             <input type="text" placeholder="search videos..." />
         </div>
-        <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem">
-            <!--<div class="controls-container-panel-result">-->
-                <!--<div class="controls-container-panel-result-thumb"></div>-->
-                <!--<div class="controls-container-panel-result-info"></div>-->
-            <!--</div>-->
-            <!--<span>This feature is not yet enabled. <br />Use <i class="text-hl-name">/stream queue &lt;url&gt;</i> to queue a stream.</span>-->
-        </div>
+        <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem"></div>
         <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">
             <!--<div class="controls-container-panel-result">-->
                 <!--<div class="controls-container-panel-result-thumb">-->
@@ -471,20 +489,23 @@ video, #yt-video {
                     <!--<span>Untitled<br /><br />https://www.youtube.com/watch?v=08765hgf</span>-->
                 <!--</div>-->
             <!--</div>-->
-            <span>Loading queue...</span>
+            <span class="message-wrapper">
+                <span class="message-inner">Loading queue...</span>
+            </span>
         </div>
     </div>
 </div>
 <div id="chat-container" class="user-controls">
-		<div id="chat-container-view"></div>
-		<div id="chat-container-input">
-			<input type="text" class="chat-container-input" />
-		</div>
-		<div id="chat-container-overlay">
-			<div class="full-size">
-				<input class="full-size middle text-center chat-container-input no-border" id="chat-container-username-input" type="text" placeholder="Please enter a username to continue."/>
-			</div>
-		</div>
+    <div class="opacity-overlay"></div>
+    <div id="chat-container-view"></div>
+    <div id="chat-container-input">
+        <input type="text" class="chat-container-input" />
+    </div>
+    <div id="chat-container-overlay">
+        <div class="full-size">
+            <input class="full-size middle text-center chat-container-input no-border" id="chat-container-username-input" type="text" placeholder="Please enter a username to continue."/>
+        </div>
+    </div>
 </div>
 <div id="video-overlay" class="overlay"></div>
 <div id="yt-video"></div>

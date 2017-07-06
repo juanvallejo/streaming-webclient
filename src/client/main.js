@@ -23,6 +23,9 @@ function App(window, document) {
     this.overlay = document.getElementById("overlay");
     this.out = document.getElementById("out");
     this.outTimeout = null;
+
+    this.opacityOverlayClassName = ".opacity-overlay";
+    this.defaultInterfaceOpacity = 0.8;
     
     this.chat = new Chat(
         document.getElementById('chat-container'),
@@ -40,7 +43,7 @@ function App(window, document) {
     this.banner = new Banner(document.getElementById("banner"));
 
     this.controls = new Controls(
-        document.getElementById("controls-container"), 
+        document.getElementById("controls-container"),
         document.getElementsByClassName("controls-container-button"),
         document.getElementsByClassName("controls-container-info-inner"),
         document.getElementsByClassName("controls-container-volume-elem"),
@@ -56,6 +59,8 @@ function App(window, document) {
     // and its sub-components
     this.init = function() {
         this.chat.hide(true);
+
+        $(self.opacityOverlayClassName).fadeTo("normal", 0.0);
 
         if (window.WebSocket === undefined) {
             this.out.innerHTML = "<span class='text-hl-name'>FlickTrack</span> is incompatible with your browser.<br />"
@@ -107,6 +112,19 @@ function App(window, document) {
             }
 
             self.video[method].apply(self, args);
+        });
+
+        this.controls.on("opacitytoggle", function(enable, val, speed) {
+            speed = speed || 200;
+            $(self.opacityOverlayClassName).stop();
+
+            if (!enable) {
+                $(self.opacityOverlayClassName).animate({"opacity": 0.0}, {"duration": speed, "queue": false});
+                return;
+            }
+
+            val = val || self.defaultInterfaceOpacity;
+            $(self.opacityOverlayClassName).animate({"opacity": val}, {"duration": speed, "queue": false});
         });
         
         // handle chat events

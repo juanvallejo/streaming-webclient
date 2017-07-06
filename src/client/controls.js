@@ -49,6 +49,7 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     this.infoTitle = infoElemCollection.item(INFO_TITLE);
 
     this.classNameControlActive = 'controls-container-active';
+    this.classNameUserControls = 'user-controls';
 
     this.controlsHideTimeout = null;
     this.hidden = false;
@@ -61,7 +62,11 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
 
     this.volumeSliderActive = false;
     this.volumeSliderDelta = 0;
+    this.volumeScrollDelta = 3;
 
+    this.defaultPlayingOpacity = 0.7;
+
+    this.queueState = [];
     this.callbacks = {};
 
     this.getSearchPanel = function() {
@@ -130,6 +135,9 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
         var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
 
+        // update playing opacity
+        self.emit("opacitytoggle", [false]);
+
         $(playButton).show();
         $(pauseButton).hide();
 
@@ -143,6 +151,9 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.isPlaying = true;
         var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
         var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
+
+        // update playing opacity
+        self.emit("opacitytoggle", [true, self.defaultPlayingOpacity]);
 
         $(pauseButton).show();
         $(playButton).hide();
@@ -184,8 +195,7 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     };
 
     this.setMediaElapsed = function(elapsedTimeSecs) {
-        var humanTime = secondsToHumanTime(elapsedTimeSecs);
-        this.infoTimeElapsed.innerHTML = humanTime;
+        this.infoTimeElapsed.innerHTML = secondsToHumanTime(elapsedTimeSecs);
     };
 
     this.setSeeker = function(current, total) {
@@ -204,10 +214,11 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     };
     
     this.updateQueue = function(items) {
+        self.queueState = items;
         self.panelQueue.innerHTML = "";
 
         if (!items.length) {
-            self.panelQueue.innerHTML = "<span>No items in the queue.</span>";
+            self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in the queue.</span></span>';
             return;
         }
 
@@ -259,6 +270,17 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.emit("chatcommand", ["/stream seek 0"]);
     };
 
+    this.handleVolumeToggle = function(delta) {
+        // slide up
+        if (delta > 0) {
+            self.emit("streamcontrol", ["increaseVolume", [delta]]);
+            return;
+        }
+
+        // slide down
+        self.emit("streamcontrol", ["decreaseVolume", [delta * -1]]);
+    };
+
     $(this.searchButton).on('click', function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handleSearchButton(this, isActive);
@@ -276,16 +298,40 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.handlePrevButton(this);
     });
 
+    $(this.volumeSlider.parentNode).on("wheel", function(e) {
+        if(e.originalEvent.deltaY < 0) {
+            self.handleVolumeToggle(self.volumeScrollDelta);
+            return;
+        }
+
+        self.handleVolumeToggle(-1 * self.volumeScrollDelta);
+    });
+
     $(this.volumeSlider.parentNode).on("mousedown", function() {
         self.volumeSliderActive = true;
     });
 
-    $(this.container).on("mouseenter", function() {
-        self.hasMouseOver = true;
+    $(self.container).on("mouseenter", function() {
+       self.hasMouseOver = true;
     });
 
-    $(this.container).on("mouseleave", function() {
+    $(self.container).on("mouseleave", function() {
         self.hasMouseOver = false;
+    });
+
+    $('.' + self.classNameUserControls).on("mouseenter", function() {
+        if (self.isPlaying) {
+            self.emit("opacitytoggle", [true]);
+        }
+    });
+
+    $('.' + self.classNameUserControls).on("mouseleave", function() {
+        if(self.isPlaying) {
+            self.emit("opacitytoggle", [true, self.defaultPlayingOpacity, 4000]);
+            return;
+        }
+
+        self.emit("opacitytoggle", [false]);
     });
 
     $(window).on("mouseup", function() {
@@ -321,14 +367,7 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
             return;
         }
 
-        // slide up
-        if (delta > 0) {
-            self.emit("streamcontrol", ["increaseVolume", [delta]]);
-            return;
-        }
-
-        // slide down
-        self.emit("streamcontrol", ["decreaseVolume", [delta * -1]]);
+        self.handleVolumeToggle(delta);
     });
 }
 

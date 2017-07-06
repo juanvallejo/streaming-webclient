@@ -347,10 +347,6 @@ function Video(videoElement, sTrackElement) {
             volMod = 100;
         }
 
-        if (val === self.videoVolume) {
-            return;
-        }
-
         self.videoVolume += val;
         if (self.videoVolume > 1) {
             self.videoVolume = 1;
@@ -377,10 +373,6 @@ function Video(videoElement, sTrackElement) {
         if (val >= 1) {
             val /= 100;
             volMod = 100;
-        }
-
-        if (val === self.videoVolume) {
-            return;
         }
         
         self.videoVolume -= val;
