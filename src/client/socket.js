@@ -60,7 +60,7 @@ function Socket(url) {
             }
 
             for (var i = 0; i < self.subscriptions[data.event].length; i++) {
-                self.subscriptions[data.event][i].apply(self.socket, [data.data.response]);
+                self.subscriptions[data.event][i].apply(self.socket, [data.data]);
             }
         } catch(e) {
             self.emit("info", ["error parsing socket response from server: " + e.toString(), false]);

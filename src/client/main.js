@@ -303,8 +303,8 @@ function App(window, document) {
         }
 
         self.controls.setMediaDuration(data.extra.streamDuration);
-        self.controls.setMediaElapsed(data.extra.timer);
-        self.controls.setSeeker(data.extra.timer, data.extra.streamDuration);
+        self.controls.setMediaElapsed(data.extra.playback.time);
+        self.controls.setSeeker(data.extra.playback.time, data.extra.streamDuration);
 
         self.video.canStartStream = false;
 
@@ -314,32 +314,32 @@ function App(window, document) {
             isNewClient = true;
         }
 
-        if (Math.abs(parseInt(data.extra.timer) - parseInt(self.video.getTime())) > 10 && !data.extra.isPaused) {
-            if (data.extra.timer <= 1) {
+        if (Math.abs(parseInt(data.extra.playback.time) - parseInt(self.video.getTime())) > 10 && !data.extra.playback.isPaused) {
+            if (data.extra.playback.time <= 1) {
                 self.banner.showBanner('Resetting stream, please wait...');
-            } else if (parseInt(data.extra.timer) - parseInt(self.video.getTime()) <= 0) {
+            } else if (parseInt(data.extra.playback.time) - parseInt(self.video.getTime()) <= 0) {
                 self.banner.showBanner('Seeking stream, please wait...');
             }
         }
 
         // only update video time if "lag" time > 1 second
-        if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.timer) > 0.5)) {
-            self.video.setTime(data.extra.timer);
+        if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.playback.time) > 0.5)) {
+            self.video.setTime(data.extra.playback.time);
         }
 
         // safari bug fix - currentTime will not take
         // effect until a second after the page has loaded
         if (!self.video.getTime() && self.video.videoStreamKind === Cons.STREAM_KIND_LOCAL) {
             setTimeout(function() {
-                self.video.setTime(data.extra.timer + 1);
+                self.video.setTime(data.extra.playback.time + 1);
             }, 1500);
         }
 
-        if (!data.extra.isPlaying) {
+        if (!data.extra.playback.isPlaying) {
             self.video.pause();
             self.controls.pause();
 
-            if (data.extra.isStopped) {
+            if (data.extra.playback.isStopped) {
                 if(self.video.sourceFileError) {
                     console.log('FATAL', 'Detected source file error, preventing stream from starting.');
                     return;
@@ -364,7 +364,7 @@ function App(window, document) {
         self.hideOutput();
 
         // detect video end
-        if (self.video.getDuration() && data.extra.timer >= self.video.getDuration()) {
+        if (self.video.getDuration() && data.extra.playback.time >= self.video.getDuration()) {
             if (isNewClient) {
                 self.showOutput('Welcome, the stream has already ended.');
             } else {
