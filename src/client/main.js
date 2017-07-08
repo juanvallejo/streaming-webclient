@@ -301,7 +301,15 @@ function App(window, document) {
             if (data.extra.streamDuration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
             }
+        } else {
+            if (data.extra.playback.isPlaying && self.video.sourceFileError) {
+                self.showOutput('The stream could not be loaded.');
+                self.chat.sendText(self.socket, "system", "/stream stop");
+                return;
+            }
         }
+
+        console.log(data.extra.kind);
 
         self.controls.setMediaDuration(data.extra.streamDuration);
         self.controls.setMediaElapsed(data.extra.playback.time);
@@ -341,7 +349,7 @@ function App(window, document) {
             self.controls.pause();
 
             if (data.extra.playback.isStopped) {
-                if(self.video.sourceFileError) {
+                if(self.video.sourceFileError && data.extra.kind === Cons.STREAM_KIND_LOCAL) {
                     console.log('FATAL', 'Detected source file error, preventing stream from starting.');
                     return;
                 }

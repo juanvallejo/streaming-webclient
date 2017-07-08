@@ -1173,7 +1173,15 @@ function App(window, document) {
             if (data.extra.streamDuration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
             }
+        } else {
+            if (data.extra.playback.isPlaying && self.video.sourceFileError) {
+                self.showOutput('The stream could not be loaded.');
+                self.chat.sendText(self.socket, "system", "/stream stop");
+                return;
+            }
         }
+
+        console.log(data.extra.kind);
 
         self.controls.setMediaDuration(data.extra.streamDuration);
         self.controls.setMediaElapsed(data.extra.playback.time);
@@ -1213,7 +1221,7 @@ function App(window, document) {
             self.controls.pause();
 
             if (data.extra.playback.isStopped) {
-                if(self.video.sourceFileError) {
+                if(self.video.sourceFileError && data.extra.kind === Cons.STREAM_KIND_LOCAL) {
                     console.log('FATAL', 'Detected source file error, preventing stream from starting.');
                     return;
                 }
@@ -1822,8 +1830,17 @@ function Video(videoElement, sTrackElement) {
         self.hideYtPlayer();
         self.showPlayer();
 
-        self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
-        self.video.volume = self.videoVolume;
+        try {
+            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+            self.video.volume = self.videoVolume;
+        } catch(e) {
+            console.log("EXCEPT VIDEO LOAD", e);
+            self.emit("error", [{
+                target: {
+                    error: e
+                }
+            }]);
+        }
     };
 
     this.play = function(time) {
@@ -1844,9 +1861,26 @@ function Video(videoElement, sTrackElement) {
             console.log('WARN:', 'playing muted video...');
         }
         try {
-            this.video.play();
+            var promise = this.video.play();
+            if (promise !== undefined) {
+                promise.then(function () {
+                    // Automatic playback started!
+                }).catch(function (error) {
+                    console.log('EXCEPT VIDEO PLAY', error);
+                    self.emit("error", [{
+                        target: {
+                            error: error
+                        }
+                    }]);
+                });
+            }
         } catch(e) {
             console.log('EXCEPT VIDEO PLAY', e);
+            self.emit("error", [{
+                target: {
+                    error: e
+                }
+            }]);
         }
     };
 
@@ -1865,6 +1899,11 @@ function Video(videoElement, sTrackElement) {
             self.video.pause();
         } catch(e) {
             console.log('EXCEPT VIDEO PAUSE', e);
+            self.emit("error", [{
+                target: {
+                    error: e
+                }
+            }]);
         }
     };
 
@@ -1973,8 +2012,6 @@ function Video(videoElement, sTrackElement) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
-
-
 
         self.video.volume = self.videoVolume;
     };
