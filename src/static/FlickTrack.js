@@ -1181,8 +1181,6 @@ function App(window, document) {
             }
         }
 
-        console.log(data.extra.kind);
-
         self.controls.setMediaDuration(data.extra.streamDuration);
         self.controls.setMediaElapsed(data.extra.playback.time);
         self.controls.setSeeker(data.extra.playback.time, data.extra.streamDuration);
@@ -1338,24 +1336,24 @@ function App(window, document) {
     });
 
     window.addEventListener('keydown', function(e) {
-        if ((e.keyCode == 70 || e.keyCode == 220) && !self.chat.isFocused() && self.chat.usernameInput !== document.activeElement) {
-            if (self.video.getVideo().requestFullscreen) {
-                self.video.getVideo().requestFullscreen();
-                return;
-            }
-            if (self.video.getVideo().webkitRequestFullScreen) {
-                self.video.getVideo().webkitRequestFullScreen();
-                return;
-            }
-            if (self.video.getVideo().mozRequestFullScreen) {
-                self.video.getVideo().mozRequestFullScreen();
-                return;
-            }
-            if (self.video.getVideo().msRequestFullscreen) {
-                self.video.getVideo().msRequestFullscreen();
-                return;
-            }
-        }
+        // if ((e.keyCode == 70 || e.keyCode == 220) && !self.chat.isFocused() && self.chat.usernameInput !== document.activeElement) {
+        //     if (self.video.getVideo().requestFullscreen) {
+        //         self.video.getVideo().requestFullscreen();
+        //         return;
+        //     }
+        //     if (self.video.getVideo().webkitRequestFullScreen) {
+        //         self.video.getVideo().webkitRequestFullScreen();
+        //         return;
+        //     }
+        //     if (self.video.getVideo().mozRequestFullScreen) {
+        //         self.video.getVideo().mozRequestFullScreen();
+        //         return;
+        //     }
+        //     if (self.video.getVideo().msRequestFullscreen) {
+        //         self.video.getVideo().msRequestFullscreen();
+        //         return;
+        //     }
+        // }
     });
 }
 
