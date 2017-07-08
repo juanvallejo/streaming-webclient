@@ -16,6 +16,8 @@ function Result(name, kind, url, thumb) {
     this.thumbSpan = document.createElement("span");
     this.thumbImg = new Image();
 
+    this.disableTimeout = null;
+
     if (!thumb) {
         addThumbSpanClass(this.thumbSpan, kind)
     } else {
@@ -40,7 +42,48 @@ function Result(name, kind, url, thumb) {
 
     this.appendTo = function(elem) {
         elem.appendChild(self.container);
-    }
+    };
+
+    this.onClick = function(handler) {
+        self.container.addEventListener("click", handler || function(e) {});
+    };
+
+    this.addClass = function(className) {
+        self.container.className += " " + className;
+    };
+
+    this.removeClass = function(className) {
+        var newClassName = self.container.className.split(" ");
+        if (!newClassName.length) {
+            return;
+        }
+
+        var idx = newClassName.indexOf(className);
+        if (idx === -1) {
+            return;
+        }
+
+        newClassName.splice(idx, 1);
+        self.container.className = newClassName.join(" ");
+    };
+
+    // receives an optional timeout in seconds
+    this.disable = function(timeout) {
+        this.isClicked = true;
+        this.addClass("disabled");
+
+        if (timeout) {
+            clearTimeout(self.disableTimeout);
+            self.disableTimeout = setTimeout(function() {
+                self.enable();
+            }, timeout);
+        }
+    };
+
+    this.enable = function() {
+        self.isClicked = false;
+        self.removeClass("disabled");
+    };
 }
 
 module.exports = Result;

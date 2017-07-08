@@ -45,6 +45,7 @@ function App(window, document) {
     this.controls = new Controls(
         document.getElementById("controls-container"),
         document.getElementsByClassName("controls-container-button"),
+        document.getElementsByClassName("controls-container-button-alt"),
         document.getElementsByClassName("controls-container-info-inner"),
         document.getElementsByClassName("controls-container-volume-elem"),
         document.getElementsByClassName("controls-container-panel-elem"),
@@ -322,8 +323,8 @@ function App(window, document) {
             }
         }
 
-        // only update video time if "lag" time > 1 second
-        if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.playback.time) > 0.5)) {
+        // only update video time if "lag" time > x seconds
+        if (!self.video.getTime() || (self.video.getTime() && Math.abs(self.video.getTime() - data.extra.playback.time) > 0.7)) {
             self.video.setTime(data.extra.playback.time);
         }
 

@@ -2,7 +2,8 @@
  * Chat handler
  */
 
-var Result = require('./result.js')
+var Result = require('./result.js');
+var Cons = require('./constants.js');
 
 var Emitter = require('./proto/emitter.js');
 
@@ -10,6 +11,8 @@ var CONTROLS_SEARCH = 0;
 var CONTROLS_PREV = 1;
 var CONTROLS_PLAYPAUSE = 2;
 var CONTROLS_NEXT = 3;
+
+var ALT_CONTROLS_EXIT = 0;
 
 var CONTROLS_PLAYPAUSE_PLAY = 0;
 var CONTROLS_PLAYPAUSE_PAUSE = 1;
@@ -27,7 +30,7 @@ var VOLUME_SLIDER = 1;
 
 var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
 
-function Controls(container, controlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
+function Controls(container, controlsElemCollection, altControlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
     var self = this;
 
     this.container = container;
@@ -39,6 +42,8 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
     this.controlNext = controlsElemCollection.item(CONTROLS_NEXT);
     this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
     this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
+
+    this.altControlExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
 
     this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
     this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
@@ -66,6 +71,8 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
 
     this.defaultPlayingOpacity = 0.7;
 
+    this.searchBarRequestInProgress = false;
+
     this.queueState = [];
     this.callbacks = {};
 
@@ -85,6 +92,9 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
+
+        // hide alt controls
+        $(self.altControlExit.parentNode).hide();
     };
 
     this.getWidth = function() {
@@ -123,6 +133,22 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
             return;
         }
         $(this.container).fadeOut();
+    };
+
+    this.showSearchPanel = function() {
+        $(this.panelQueue).fadeOut();
+        $(this.panelResults).fadeIn();
+
+        $(this.searchButton.parentNode).fadeOut();
+        $(this.altControlExit.parentNode).fadeIn();
+    };
+
+    this.showQueuePanel = function() {
+        $(this.panelResults).fadeOut();
+        $(this.panelQueue).fadeIn();
+
+        $(this.altControlExit.parentNode).fadeOut();
+        $(this.searchButton.parentNode).fadeIn();
     };
 
     this.setVolume = function(vol) {
@@ -194,6 +220,10 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         this.infoTimeTotal.innerHTML = secondsToHumanTime(duration);
     };
 
+    this.setSearchPanelMessage = function(message) {
+        self.panelResults.innerHTML = '<span class="message-wrapper"><span class="message-inner">' + message + '</span></span>';
+    };
+
     this.setMediaElapsed = function(elapsedTimeSecs) {
         this.infoTimeElapsed.innerHTML = secondsToHumanTime(elapsedTimeSecs);
     };
@@ -211,6 +241,28 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         this.controlSeek.style.width = percent + "%";
         this.playbackTimer = current;
         this.playbackTotal = total || 0;
+    };
+
+    this.updateSearchPanel = function(items) {
+        self.panelResults.innerHTML = '';
+
+        for(var i = 0; i < items.length; i++) {
+            var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
+            var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
+            var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
+            item.appendTo(self.panelResults);
+            item.onClick((function(item, vidUrl) {
+                return function() {
+                    if (item.isClicked) {
+                        return;
+                    }
+
+                    // disable re-queueing video for 10mins
+                    item.disable(60 * 10 * 1000);
+                    self.emit("chatcommand", ["/queue add " + vidUrl]);
+                }
+            })(item, url));
+        }
     };
     
     this.updateQueue = function(items) {
@@ -281,6 +333,30 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         self.emit("streamcontrol", ["decreaseVolume", [delta * -1]]);
     };
 
+    this.handleSearchBarRequest = function(query) {
+        this.showSearchPanel();
+        if (self.searchBarRequestInProgress) {
+            return;
+        }
+        self.searchBarRequestInProgress = true;
+        self.setSearchPanelMessage("Loading, please wait...");
+
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", "/api/youtube/search/" + encodeURIComponent(query));
+        xhr.send();
+        xhr.addEventListener("readystatechange", function() {
+            self.searchBarRequestInProgress = false;
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText)
+                    self.updateSearchPanel(data.items || []);
+                } catch(e) {
+                    self.setSearchPanelMessage("Error fetching search results...");
+                }
+            }
+        });
+    };
+
     $(this.searchButton).on('click', function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handleSearchButton(this, isActive);
@@ -305,6 +381,16 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         }
 
         self.handleVolumeToggle(-1 * self.volumeScrollDelta);
+    });
+
+    $(self.panelSearchBar).on("keypress", function(e) {
+        if (e.keyCode !== 13 || !self.panelSearchBar.value) {
+            return;
+        }
+
+        var query = self.panelSearchBar.value;
+        self.panelSearchBar.value = '';
+        self.handleSearchBarRequest(query);
     });
 
     $(this.volumeSlider.parentNode).on("mousedown", function() {
@@ -332,6 +418,10 @@ function Controls(container, controlsElemCollection, infoElemCollection, volumeE
         }
 
         self.emit("opacitytoggle", [false]);
+    });
+
+    $(self.altControlExit).on("click", function() {
+        self.showQueuePanel();
     });
 
     $(window).on("mouseup", function() {

@@ -260,7 +260,8 @@
         left: 0;
         z-index: 5;
     }
-    #controls-container-controls {
+
+    .controls-container-controls {
         width: 85%;
         height: 60%;
         position: absolute;
@@ -271,15 +272,15 @@
             width: 20%;
             border-left: 0;
         }
-        .controls-container-button {
+        .controls-container-button, .controls-container-button-alt {
             text-align: center;
             border-left: 1px solid rgba(255,255,255,0.05);
 
         }
-            .controls-container-button:active, .controls-container-active {
+            .controls-container-button:active, .controls-container-active, controls-container-button-alt:active {
                 background: rgba(0,94,129,0.5);
             }
-            .controls-container-button span {
+            .controls-container-button span, .controls-container-button-alt span {
                 display: inline-block;
             }
 
@@ -409,6 +410,12 @@
 .text-white {
 	color: rgba(255,255,255, 0.8);
 }
+.disabled {
+    opacity: 0.3;
+}
+.hidden {
+    display: none;
+}
 body, html {
     height: 100%;
 }
@@ -447,7 +454,7 @@ video, #yt-video {
         </div>
         <div id="controls-container-vol-slider" class="controls-container-volume-elem noselect"></div>
     </div>
-    <div id="controls-container-controls" class="middle-container noselect">
+    <div class="controls-container-controls middle-container noselect">
         <div id="controls-container-controls-search" class="controls-container-button middle">
             <span class="fa fa-search"></span>
         </div>
@@ -460,6 +467,11 @@ video, #yt-video {
         </div>
         <div class="controls-container-button middle">
             <span class="fa fa-step-forward"></span>
+        </div>
+    </div>
+    <div class="controls-container-controls middle-container noselect">
+        <div class="controls-container-button-alt middle">
+            <span class="fa fa-times"></span>
         </div>
     </div>
     <div id="controls-container-info" class="middle-container noselect">
@@ -475,8 +487,8 @@ video, #yt-video {
     </div>
     <div id="controls-container-panel">
         <div class="opacity-overlay"></div>
-        <div id="controls-container-panel-searchbar" class="controls-container-panel-elem">
-            <input type="text" placeholder="search videos..." />
+        <div id="controls-container-panel-searchbar">
+            <input type="text" placeholder="search videos..." class="controls-container-panel-elem" />
         </div>
         <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem"></div>
         <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">
