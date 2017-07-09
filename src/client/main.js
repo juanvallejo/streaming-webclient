@@ -85,11 +85,11 @@ function App(window, document) {
 
         this.video.on('error', function(err) {
             if (err.target.error.code == Cons.ERR_CODE_VID_NOTFOUND) {
-                self.out.innerHTML = 'The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.';
+                self.showOutput('The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.');
             } else {
-                self.out.innerHTML = 'Unexpected error occurred while receiving video data.<br />';
-                self.out.innerHTML += err.target.error
+                self.showOutput('Unexpected error occurred while receiving video data.<br />' + err.target.error);
             }
+            self.controls.pause();
 
             self.video.sourceFileError = true;
             self.video.canStartStream = false;
@@ -126,6 +126,15 @@ function App(window, document) {
 
             val = val || self.defaultInterfaceOpacity;
             $(self.opacityOverlayClassName).animate({"opacity": val}, {"duration": speed, "queue": false});
+        });
+        
+        this.controls.on("queuetoggle", function(isQueueShowing) {
+            if (!isQueueShowing) {
+                self.controls.showQueueItems();
+                return;
+            }
+
+            self.controls.showStackItems();
         });
         
         // handle chat events
@@ -167,6 +176,7 @@ function App(window, document) {
     this.showOutput = function(text, timeout) {
         clearTimeout(this.outTimeout);
 
+        $(this.overlay).stop();
         this.overlay.style.display = 'table';
         this.out.innerHTML = text;
 
@@ -277,29 +287,33 @@ function App(window, document) {
         data = parseSockData(data);
         self.video.load(data);
 
-        if (data.extra.kind !== Cons.STREAM_KIND_YOUTUBE
-            && data.extra.kind !== Cons.STREAM_KIND_LOCAL) {
-            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.kind + '"')
+        if (data.extra.stream.kind !== Cons.STREAM_KIND_YOUTUBE
+            && data.extra.stream.kind !== Cons.STREAM_KIND_LOCAL) {
+            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.stream.kind + '"')
             return
         }
 
         self.socket.send("request_streamsync");
         self.socket.send("request_queuesync");
+
+        if (self.controls.stackState.length) {
+            self.socket.send("request_stacksync");
+        }
     });
 
     this.socket.on('queuesync', function(data) {
         self.controls.updateQueue(data.extra.items || []);
     });
 
+    this.socket.on('stacksync', function(data) {
+        self.controls.updateStack(data.extra.items || [])
+    });
+    
     this.socket.on('streamsync', function(data) {
         data = parseSockData(data);
-
-        // TODO: server-side information parsing about stream
-        self.controls.setMediaTitle("No stream data available");
-
-        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
-            if (data.extra.streamDuration) {
-                self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
+        if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
+            if (data.extra.stream.duration) {
+                self.getVideo().ytVideoInfo.duration = data.extra.stream.duration;
             }
         } else {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
@@ -309,9 +323,10 @@ function App(window, document) {
             }
         }
 
-        self.controls.setMediaDuration(data.extra.streamDuration);
+        self.controls.setMediaTitle(data.extra.stream.name || data.extra.stream.url);
+        self.controls.setMediaDuration(data.extra.stream.duration);
         self.controls.setMediaElapsed(data.extra.playback.time);
-        self.controls.setSeeker(data.extra.playback.time, data.extra.streamDuration);
+        self.controls.setSeeker(data.extra.playback.time, data.extra.stream.duration);
 
         self.video.canStartStream = false;
 
@@ -347,7 +362,7 @@ function App(window, document) {
             self.controls.pause();
 
             if (data.extra.playback.isStopped) {
-                if(self.video.sourceFileError && data.extra.kind === Cons.STREAM_KIND_LOCAL) {
+                if(self.video.sourceFileError && data.extra.stream.kind === Cons.STREAM_KIND_LOCAL) {
                     console.log('FATAL', 'Detected source file error, preventing stream from starting.');
                     return;
                 }
@@ -382,11 +397,11 @@ function App(window, document) {
         }
 
         if(isNewClient) {
-            if (data.extra.startedBy) {
-                self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.extra.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-            } else {
-                self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-            }
+            // if (data.extra.startedBy) {
+            //     self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.extra.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+            // } else {
+            //     self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+            // }
         }
 
         self.video.play();

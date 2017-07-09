@@ -377,6 +377,9 @@ var Cons = require('./constants.js');
 
 var Emitter = require('./proto/emitter.js');
 
+var SHOW_QUEUE = 1;
+var SHOW_STACK = 2;
+
 var CONTROLS_SEARCH = 0;
 var CONTROLS_PREV = 1;
 var CONTROLS_PLAYPAUSE = 2;
@@ -391,9 +394,10 @@ var INFO_TIME_ELAPSED = 0;
 var INFO_TITLE = 1;
 var INFO_TIME_TOTAL = 2;
 
-var SEARCH_PANEL_SEARCHBAR = 0;
-var SEARCH_PANEL_RESULTS = 1;
-var SEARCH_PANEL_QUEUE = 2;
+var SEARCH_PANEL_QUEUE_TOGGLE = 0;
+var SEARCH_PANEL_SEARCHBAR = 1;
+var SEARCH_PANEL_RESULTS = 2;
+var SEARCH_PANEL_QUEUE = 3;
 
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
@@ -415,6 +419,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.altControlExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
 
+    this.panelQueueToggle = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE);
     this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
     this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
     this.panelQueue = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE);
@@ -443,6 +448,8 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.searchBarRequestInProgress = false;
 
+    this.showQueueOrStack = SHOW_QUEUE;
+    this.stackState = [];
     this.queueState = [];
     this.callbacks = {};
 
@@ -458,7 +465,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.init = function() {
         // display queue
-        $(self.searchButton).click();
+        // $(self.searchButton).click();
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
@@ -579,7 +586,14 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
     
     this.setMediaTitle = function(title) {
-        this.infoTitle.innerHTML = title;
+        if (!title) {
+            title = "Untitled"
+        }
+
+        this.infoTitle.innerHTML = "<span>" + title + "</span>";
+        if(this.infoTitle.children[0].scrollWidth > this.infoTitle.children[0].clientWidth) {
+            this.infoTitle.setAttribute("title", title);
+        }
     };
     
     this.setMediaDuration = function(duration) {
@@ -616,6 +630,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.updateSearchPanel = function(items) {
         self.panelResults.innerHTML = '';
 
+        if (!items.length) {
+            self.panelResults.innerHTML = '<span class="message-wrapper"><span class="message-inner">No results found.</span></span>';
+            return;
+        }
+
         for(var i = 0; i < items.length; i++) {
             var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
             var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
@@ -637,10 +656,43 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     
     this.updateQueue = function(items) {
         self.queueState = items;
+
+        if (self.showQueueOrStack === SHOW_QUEUE) {
+            self.showQueueItems();
+        }
+    };
+
+    this.updateStack = function(items) {
+        self.stackState = items;
+
+        if (self.showQueueOrStack === SHOW_STACK) {
+            self.showStackItems();
+        }
+    };
+
+    this.showQueueItems = function() {
+        self.showQueueOrStack = SHOW_QUEUE;
         self.panelQueue.innerHTML = "";
 
+        var items = self.queueState;
         if (!items.length) {
             self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in the queue.</span></span>';
+            return;
+        }
+
+        for(var i = 0; i < items.length; i++) {
+            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            item.appendTo(self.panelQueue);
+        }
+    };
+
+    this.showStackItems = function() {
+        self.showQueueOrStack = SHOW_STACK;
+        self.panelQueue.innerHTML = "";
+
+        var items = self.stackState;
+        if (!items.length) {
+            self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in your queue.</span></span>';
             return;
         }
 
@@ -662,6 +714,16 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                 $(self.panelSearchBar).children().focus();
             }
         });
+    };
+
+    this.handlePanelToggleButton = function(button, isActive) {
+        if (isActive) {
+            $(button).removeClass(self.classNameControlActive);
+        } else {
+            $(button).addClass(self.classNameControlActive);
+        }
+
+        self.emit("queuetoggle", [!isActive]);
     };
 
     this.handlePlayPause = function(button, isActive) {
@@ -751,6 +813,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         }
 
         self.handleVolumeToggle(-1 * self.volumeScrollDelta);
+    });
+
+    $(self.panelQueueToggle).on("click", function() {
+        var isActive = $(this).hasClass(self.classNameControlActive);
+        self.handlePanelToggleButton(this, isActive);
     });
 
     $(self.panelSearchBar).on("keypress", function(e) {
@@ -957,11 +1024,11 @@ function App(window, document) {
 
         this.video.on('error', function(err) {
             if (err.target.error.code == Cons.ERR_CODE_VID_NOTFOUND) {
-                self.out.innerHTML = 'The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.';
+                self.showOutput('The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.');
             } else {
-                self.out.innerHTML = 'Unexpected error occurred while receiving video data.<br />';
-                self.out.innerHTML += err.target.error
+                self.showOutput('Unexpected error occurred while receiving video data.<br />' + err.target.error);
             }
+            self.controls.pause();
 
             self.video.sourceFileError = true;
             self.video.canStartStream = false;
@@ -998,6 +1065,15 @@ function App(window, document) {
 
             val = val || self.defaultInterfaceOpacity;
             $(self.opacityOverlayClassName).animate({"opacity": val}, {"duration": speed, "queue": false});
+        });
+        
+        this.controls.on("queuetoggle", function(isQueueShowing) {
+            if (!isQueueShowing) {
+                self.controls.showQueueItems();
+                return;
+            }
+
+            self.controls.showStackItems();
         });
         
         // handle chat events
@@ -1039,6 +1115,7 @@ function App(window, document) {
     this.showOutput = function(text, timeout) {
         clearTimeout(this.outTimeout);
 
+        $(this.overlay).stop();
         this.overlay.style.display = 'table';
         this.out.innerHTML = text;
 
@@ -1149,29 +1226,33 @@ function App(window, document) {
         data = parseSockData(data);
         self.video.load(data);
 
-        if (data.extra.kind !== Cons.STREAM_KIND_YOUTUBE
-            && data.extra.kind !== Cons.STREAM_KIND_LOCAL) {
-            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.kind + '"')
+        if (data.extra.stream.kind !== Cons.STREAM_KIND_YOUTUBE
+            && data.extra.stream.kind !== Cons.STREAM_KIND_LOCAL) {
+            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.stream.kind + '"')
             return
         }
 
         self.socket.send("request_streamsync");
         self.socket.send("request_queuesync");
+
+        if (self.controls.stackState.length) {
+            self.socket.send("request_stacksync");
+        }
     });
 
     this.socket.on('queuesync', function(data) {
         self.controls.updateQueue(data.extra.items || []);
     });
 
+    this.socket.on('stacksync', function(data) {
+        self.controls.updateStack(data.extra.items || [])
+    });
+    
     this.socket.on('streamsync', function(data) {
         data = parseSockData(data);
-
-        // TODO: server-side information parsing about stream
-        self.controls.setMediaTitle("No stream data available");
-
-        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
-            if (data.extra.streamDuration) {
-                self.getVideo().ytVideoInfo.duration = data.extra.streamDuration;
+        if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
+            if (data.extra.stream.duration) {
+                self.getVideo().ytVideoInfo.duration = data.extra.stream.duration;
             }
         } else {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
@@ -1181,9 +1262,10 @@ function App(window, document) {
             }
         }
 
-        self.controls.setMediaDuration(data.extra.streamDuration);
+        self.controls.setMediaTitle(data.extra.stream.name || data.extra.stream.url);
+        self.controls.setMediaDuration(data.extra.stream.duration);
         self.controls.setMediaElapsed(data.extra.playback.time);
-        self.controls.setSeeker(data.extra.playback.time, data.extra.streamDuration);
+        self.controls.setSeeker(data.extra.playback.time, data.extra.stream.duration);
 
         self.video.canStartStream = false;
 
@@ -1219,7 +1301,7 @@ function App(window, document) {
             self.controls.pause();
 
             if (data.extra.playback.isStopped) {
-                if(self.video.sourceFileError && data.extra.kind === Cons.STREAM_KIND_LOCAL) {
+                if(self.video.sourceFileError && data.extra.stream.kind === Cons.STREAM_KIND_LOCAL) {
                     console.log('FATAL', 'Detected source file error, preventing stream from starting.');
                     return;
                 }
@@ -1254,11 +1336,11 @@ function App(window, document) {
         }
 
         if(isNewClient) {
-            if (data.extra.startedBy) {
-                self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.extra.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-            } else {
-                self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
-            }
+            // if (data.extra.startedBy) {
+            //     self.showOutput('Welcome, the stream has already been started by <span class="text-hl-name">' + data.extra.startedBy + '</span>.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+            // } else {
+            //     self.showOutput('Welcome, the stream has already been started.', Cons.DEFAULT_OVERLAY_TIMEOUT);
+            // }
         }
 
         self.video.play();
@@ -1622,7 +1704,7 @@ function Video(videoElement, sTrackElement) {
 
     // handlers
     this.defaultSubtitlesHandler = function(path, handler) {
-        if (self.loadedData.kind !== Cons.STREAM_KIND_LOCAL) {
+        if (self.loadedData.stream.kind !== Cons.STREAM_KIND_LOCAL) {
             handler('This type of stream does not support adding subtitles.');
             return false;
         }
@@ -1806,13 +1888,14 @@ function Video(videoElement, sTrackElement) {
 
     this.load = function(data) {
         self.pause();
+        self.sourceFileError = false;
         self.loadedData = data.extra;
-        self.videoStreamKind = data.extra.kind;
+        self.videoStreamKind = data.extra.stream.kind;
         self.pause();
-        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
             self.showYtPlayer();
-            self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
+            self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.stream.url));
             self.pause();
 
             var volMod = 1;
@@ -1829,7 +1912,7 @@ function Video(videoElement, sTrackElement) {
         self.showPlayer();
 
         try {
-            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
             self.video.volume = self.videoVolume;
         } catch(e) {
             console.log("EXCEPT VIDEO LOAD", e);
@@ -1847,7 +1930,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             this.playYtVideo();
             return;
         }
@@ -1888,7 +1971,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
             return;
         }
@@ -1911,7 +1994,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.seekYtVideo(time);
         }
 
@@ -1924,7 +2007,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return self.ytVideoCurrentTime;
         }
 
@@ -1978,7 +2061,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -2006,7 +2089,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -2035,7 +2118,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -2049,7 +2132,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
         }
 

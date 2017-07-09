@@ -90,24 +90,45 @@
                         display: table-cell;
                         vertical-align: middle;
                     }
-    #controls-container-panel-searchbar {
+
+    #controls-container-panel-top {
         width: 100%;
         height: 10%;
-        /*background: rgba(0,0,0,0.15);*/
         border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-        #controls-container-panel-searchbar input {
-            background: transparent;
-            padding: 0;
-            margin: 0;
-            border: 0;
-            font: inherit;
-            color: inherit;
-            vertical-align: middle;
-            text-align: center;
-            width: 100%;
+        #controls-container-panel-queuetoggle {
+            width: 10%;
             height: 100%;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
         }
+            #controls-container-panel-queuetoggle span {
+                text-align: center;
+                width: 100%;
+                height: 100%;
+                display: table;
+            }
+                #controls-container-panel-queuetoggle span:before {
+                    display: table-cell;
+                    vertical-align: middle;
+                }
+            #controls-container-panel-queuetoggle span:active {
+                background: rgba(0,94,129,0.5);
+            }
+        #controls-container-panel-searchbar {
+            text-align: center;
+        }
+            #controls-container-panel-searchbar input {
+                background: transparent;
+                padding: 0;
+                margin: 0;
+                border: 0;
+                font: inherit;
+                color: inherit;
+                text-align: center;
+                width: 100%;
+                height: 100%;
+            }
 
     #controls-container-panel-queue {
 
@@ -225,7 +246,7 @@
 
     #controls-container-info {
         width: 85%;
-        height: 10%;
+        height: 40%;
         text-align: center;
         border-top: 1px solid rgba(255,255,255,0.01);
         position: absolute;
@@ -233,8 +254,8 @@
         left: 0;
     }
         .controls-container-info-inner {
-            padding: 0 0 2.7% 0;
             text-align: center;
+            display: table-cell;
             border-left: 1px solid rgba(255,255,255,0.01);
             height: 100%;
         }
@@ -245,8 +266,18 @@
 
         }
         #controls-container-info-middle {
-
+            overflow: hidden;
         }
+
+            #controls-container-info-middle span {
+                display: inline-block;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                width: 100%;
+                max-width: 320px;
+                overflow: hidden;
+            }
+
         #controls-container-info-right {
 
         }
@@ -487,8 +518,13 @@ video, #yt-video {
     </div>
     <div id="controls-container-panel">
         <div class="opacity-overlay"></div>
-        <div id="controls-container-panel-searchbar">
-            <input type="text" placeholder="search videos..." class="controls-container-panel-elem" />
+        <div id="controls-container-panel-top" class="middle-container">
+            <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle">
+                <span class="fa fa-bars middle-container"></span>
+            </div>
+            <div id="controls-container-panel-searchbar" class="middle">
+                <input type="text" placeholder="search videos..." class="controls-container-panel-elem" />
+            </div>
         </div>
         <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem"></div>
         <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">

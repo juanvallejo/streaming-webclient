@@ -35,7 +35,7 @@ function Video(videoElement, sTrackElement) {
 
     // handlers
     this.defaultSubtitlesHandler = function(path, handler) {
-        if (self.loadedData.kind !== Cons.STREAM_KIND_LOCAL) {
+        if (self.loadedData.stream.kind !== Cons.STREAM_KIND_LOCAL) {
             handler('This type of stream does not support adding subtitles.');
             return false;
         }
@@ -219,13 +219,14 @@ function Video(videoElement, sTrackElement) {
 
     this.load = function(data) {
         self.pause();
+        self.sourceFileError = false;
         self.loadedData = data.extra;
-        self.videoStreamKind = data.extra.kind;
+        self.videoStreamKind = data.extra.stream.kind;
         self.pause();
-        if (data.extra.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
             self.showYtPlayer();
-            self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.url));
+            self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.stream.url));
             self.pause();
 
             var volMod = 1;
@@ -242,7 +243,7 @@ function Video(videoElement, sTrackElement) {
         self.showPlayer();
 
         try {
-            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.url;
+            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
             self.video.volume = self.videoVolume;
         } catch(e) {
             console.log("EXCEPT VIDEO LOAD", e);
@@ -260,7 +261,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             this.playYtVideo();
             return;
         }
@@ -301,7 +302,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
             return;
         }
@@ -324,7 +325,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.seekYtVideo(time);
         }
 
@@ -337,7 +338,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return self.ytVideoCurrentTime;
         }
 
@@ -391,7 +392,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -419,7 +420,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -448,7 +449,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         }
@@ -462,7 +463,7 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        if (self.loadedData.kind === Cons.STREAM_KIND_YOUTUBE) {
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
         }
 

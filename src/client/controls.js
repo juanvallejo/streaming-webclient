@@ -7,6 +7,9 @@ var Cons = require('./constants.js');
 
 var Emitter = require('./proto/emitter.js');
 
+var SHOW_QUEUE = 1;
+var SHOW_STACK = 2;
+
 var CONTROLS_SEARCH = 0;
 var CONTROLS_PREV = 1;
 var CONTROLS_PLAYPAUSE = 2;
@@ -21,9 +24,10 @@ var INFO_TIME_ELAPSED = 0;
 var INFO_TITLE = 1;
 var INFO_TIME_TOTAL = 2;
 
-var SEARCH_PANEL_SEARCHBAR = 0;
-var SEARCH_PANEL_RESULTS = 1;
-var SEARCH_PANEL_QUEUE = 2;
+var SEARCH_PANEL_QUEUE_TOGGLE = 0;
+var SEARCH_PANEL_SEARCHBAR = 1;
+var SEARCH_PANEL_RESULTS = 2;
+var SEARCH_PANEL_QUEUE = 3;
 
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
@@ -45,6 +49,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.altControlExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
 
+    this.panelQueueToggle = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE);
     this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
     this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
     this.panelQueue = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE);
@@ -73,6 +78,8 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.searchBarRequestInProgress = false;
 
+    this.showQueueOrStack = SHOW_QUEUE;
+    this.stackState = [];
     this.queueState = [];
     this.callbacks = {};
 
@@ -88,7 +95,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.init = function() {
         // display queue
-        $(self.searchButton).click();
+        // $(self.searchButton).click();
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
@@ -209,7 +216,14 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
     
     this.setMediaTitle = function(title) {
-        this.infoTitle.innerHTML = title;
+        if (!title) {
+            title = "Untitled"
+        }
+
+        this.infoTitle.innerHTML = "<span>" + title + "</span>";
+        if(this.infoTitle.children[0].scrollWidth > this.infoTitle.children[0].clientWidth) {
+            this.infoTitle.setAttribute("title", title);
+        }
     };
     
     this.setMediaDuration = function(duration) {
@@ -246,6 +260,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.updateSearchPanel = function(items) {
         self.panelResults.innerHTML = '';
 
+        if (!items.length) {
+            self.panelResults.innerHTML = '<span class="message-wrapper"><span class="message-inner">No results found.</span></span>';
+            return;
+        }
+
         for(var i = 0; i < items.length; i++) {
             var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
             var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
@@ -267,10 +286,43 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     
     this.updateQueue = function(items) {
         self.queueState = items;
+
+        if (self.showQueueOrStack === SHOW_QUEUE) {
+            self.showQueueItems();
+        }
+    };
+
+    this.updateStack = function(items) {
+        self.stackState = items;
+
+        if (self.showQueueOrStack === SHOW_STACK) {
+            self.showStackItems();
+        }
+    };
+
+    this.showQueueItems = function() {
+        self.showQueueOrStack = SHOW_QUEUE;
         self.panelQueue.innerHTML = "";
 
+        var items = self.queueState;
         if (!items.length) {
             self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in the queue.</span></span>';
+            return;
+        }
+
+        for(var i = 0; i < items.length; i++) {
+            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            item.appendTo(self.panelQueue);
+        }
+    };
+
+    this.showStackItems = function() {
+        self.showQueueOrStack = SHOW_STACK;
+        self.panelQueue.innerHTML = "";
+
+        var items = self.stackState;
+        if (!items.length) {
+            self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in your queue.</span></span>';
             return;
         }
 
@@ -292,6 +344,16 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                 $(self.panelSearchBar).children().focus();
             }
         });
+    };
+
+    this.handlePanelToggleButton = function(button, isActive) {
+        if (isActive) {
+            $(button).removeClass(self.classNameControlActive);
+        } else {
+            $(button).addClass(self.classNameControlActive);
+        }
+
+        self.emit("queuetoggle", [!isActive]);
     };
 
     this.handlePlayPause = function(button, isActive) {
@@ -381,6 +443,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         }
 
         self.handleVolumeToggle(-1 * self.volumeScrollDelta);
+    });
+
+    $(self.panelQueueToggle).on("click", function() {
+        var isActive = $(this).hasClass(self.classNameControlActive);
+        self.handlePanelToggleButton(this, isActive);
     });
 
     $(self.panelSearchBar).on("keypress", function(e) {
