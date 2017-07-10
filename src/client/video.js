@@ -273,12 +273,11 @@ function Video(videoElement, sTrackElement) {
             console.log('WARN:', 'playing muted video...');
         }
         try {
-            if (!this.video.paused) {
+            var isPlaying = this.video.currentTime > 0 && !this.video.paused && !this.video.ended && this.video.readyState > 2;
+            if (isPlaying) {
                 return;
             }
-
-            console.log(this.video.paused);
-
+            
             var promise = this.video.play();
             if (promise !== undefined) {
                 promise.then(function () {

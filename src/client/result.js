@@ -6,6 +6,7 @@ function Result(name, kind, url, thumb) {
     this.name = name || "Untitled";
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
+    this.thumbImgUrl = thumb;
 
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
@@ -39,6 +40,22 @@ function Result(name, kind, url, thumb) {
     // build sub-tree
     this.container.appendChild(this.thumb);
     this.container.appendChild(this.info);
+
+    this.getName = function() {
+        return this.name;
+    };
+
+    this.getUrl = function() {
+        return this.url;
+    };
+
+    this.getThumb = function() {
+        return this.thumbImgUrl;
+    };
+    
+    this.getKind = function() {
+        return this.kind;  
+    };
 
     this.appendTo = function(elem) {
         elem.appendChild(self.container);

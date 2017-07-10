@@ -377,6 +377,8 @@ var Cons = require('./constants.js');
 
 var Emitter = require('./proto/emitter.js');
 
+var MAX_SEARCH_CACHE_RESULTS = 10;
+
 var SHOW_QUEUE = 1;
 var SHOW_STACK = 2;
 
@@ -449,6 +451,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.searchBarRequestInProgress = false;
 
     this.showQueueOrStack = SHOW_QUEUE;
+    this.searchCache = {}; // cache for search result information - [url]->Result
     this.stackState = [];
     this.queueState = [];
     this.callbacks = {};
@@ -628,6 +631,16 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
 
     this.updateSearchPanel = function(items) {
+        // reset search cache
+        var count = 0;
+        for (var i in self.searchCache) {
+            count++;
+        }
+        if(count > MAX_SEARCH_CACHE_RESULTS) {
+            console.log("RESET CACHE");
+            self.searchCache = {};
+        }
+
         self.panelResults.innerHTML = '';
 
         if (!items.length) {
@@ -645,6 +658,9 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                     if (item.isClicked) {
                         return;
                     }
+
+                    // add search item information to the search cache
+                    self.searchCache[item.getUrl()] = item;
 
                     // disable re-queueing video for 10mins
                     item.disable(60 * 10 * 1000);
@@ -681,7 +697,25 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         }
 
         for(var i = 0; i < items.length; i++) {
-            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            var name = items[i].name;
+            var kind = items[i].kind;
+            var thumb = items[i].thumb;
+            
+            // check cache for cached information if missing
+            var cachedData = self.searchCache[items[i].url];
+            if (cachedData) {
+                if(!name) {
+                    name = cachedData.getName();
+                }
+                if(!thumb) {
+                    thumb = cachedData.getThumb();
+                }
+                if(!kind) {
+                    kind = cachedData.getKind();
+                }
+            }
+            
+            var item = new Result(name, kind, items[i].url, thumb);
             item.appendTo(self.panelQueue);
         }
     };
@@ -697,7 +731,25 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         }
 
         for(var i = 0; i < items.length; i++) {
-            var item = new Result(items[i].name, items[i].kind, items[i].url, items[i].thumb);
+            var name = items[i].name;
+            var kind = items[i].kind;
+            var thumb = items[i].thumb;
+
+            // check cache for cached information if missing
+            var cachedData = self.searchCache[items[i].url];
+            if (cachedData) {
+                if(!name) {
+                    name = cachedData.getName();
+                }
+                if(!thumb) {
+                    thumb = cachedData.getThumb();
+                }
+                if(!kind) {
+                    kind = cachedData.getKind();
+                }
+            }
+
+            var item = new Result(name, kind, items[i].url, thumb);
             item.appendTo(self.panelQueue);
         }
     };
@@ -1486,6 +1538,7 @@ function Result(name, kind, url, thumb) {
     this.name = name || "Untitled";
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
+    this.thumbImgUrl = thumb;
 
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
@@ -1519,6 +1572,22 @@ function Result(name, kind, url, thumb) {
     // build sub-tree
     this.container.appendChild(this.thumb);
     this.container.appendChild(this.info);
+
+    this.getName = function() {
+        return this.name;
+    };
+
+    this.getUrl = function() {
+        return this.url;
+    };
+
+    this.getThumb = function() {
+        return this.thumbImgUrl;
+    };
+    
+    this.getKind = function() {
+        return this.kind;  
+    };
 
     this.appendTo = function(elem) {
         elem.appendChild(self.container);
@@ -1942,12 +2011,11 @@ function Video(videoElement, sTrackElement) {
             console.log('WARN:', 'playing muted video...');
         }
         try {
-            if (!this.video.paused) {
+            var isPlaying = this.video.currentTime > 0 && !this.video.paused && !this.video.ended && this.video.readyState > 2;
+            if (isPlaying) {
                 return;
             }
-
-            console.log(this.video.paused);
-
+            
             var promise = this.video.play();
             if (promise !== undefined) {
                 promise.then(function () {
