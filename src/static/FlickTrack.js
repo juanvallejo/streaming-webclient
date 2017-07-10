@@ -378,6 +378,7 @@ var Cons = require('./constants.js');
 var Emitter = require('./proto/emitter.js');
 
 var MAX_SEARCH_CACHE_RESULTS = 10;
+var MAX_MEDIA_TITLE_LENGTH = 39;
 
 var SHOW_QUEUE = 1;
 var SHOW_STACK = 2;
@@ -397,9 +398,10 @@ var INFO_TITLE = 1;
 var INFO_TIME_TOTAL = 2;
 
 var SEARCH_PANEL_QUEUE_TOGGLE = 0;
-var SEARCH_PANEL_SEARCHBAR = 1;
-var SEARCH_PANEL_RESULTS = 2;
-var SEARCH_PANEL_QUEUE = 3;
+var SEARCH_PANEL_QUEUE_TOGGLE_COUNTER = 1;
+var SEARCH_PANEL_SEARCHBAR = 2;
+var SEARCH_PANEL_RESULTS = 3;
+var SEARCH_PANEL_QUEUE = 4;
 
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
@@ -410,11 +412,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     var self = this;
 
     this.container = container;
-    this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
+    this.controlSeek = seekElem;
 
     this.volumeSlider = volumeElemCollection.item(VOLUME_SLIDER);
 
-    this.controlSeek = seekElem;
+    this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
     this.controlNext = controlsElemCollection.item(CONTROLS_NEXT);
     this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
     this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
@@ -422,6 +424,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.altControlExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
 
     this.panelQueueToggle = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE);
+    this.panelQueueToggleCounter = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE_COUNTER);
     this.panelSearchBar = searchPanelElemCollection.item(SEARCH_PANEL_SEARCHBAR);
     this.panelResults = searchPanelElemCollection.item(SEARCH_PANEL_RESULTS);
     this.panelQueue = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE);
@@ -468,13 +471,16 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.init = function() {
         // display queue
-        // $(self.searchButton).click();
+        $(self.searchButton).click();
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
 
         // hide alt controls
         $(self.altControlExit.parentNode).hide();
+
+        // hide notification counter
+        $(self.panelQueueToggleCounter).hide();
     };
 
     this.getWidth = function() {
@@ -593,10 +599,15 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             title = "Untitled"
         }
 
-        this.infoTitle.innerHTML = "<span>" + title + "</span>";
-        if(this.infoTitle.children[0].scrollWidth > this.infoTitle.children[0].clientWidth) {
+        // reset previous title attribute
+        this.infoTitle.removeAttribute("title");
+
+        var text = title;
+        if (title.length > MAX_MEDIA_TITLE_LENGTH) {
+            text = title.substring(0, MAX_MEDIA_TITLE_LENGTH) + "...";
             this.infoTitle.setAttribute("title", title);
         }
+        this.infoTitle.innerHTML = "<span>" + text + "</span>";
     };
     
     this.setMediaDuration = function(duration) {
@@ -680,6 +691,18 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.updateStack = function(items) {
         self.stackState = items;
+
+        // update stack notification counter
+        if (items.length > 1) {
+            var count = items.length;
+            if (count > 99) {
+                count = '99+';
+            }
+            self.panelQueueToggleCounter.innerHTML = count;
+            $(self.panelQueueToggleCounter).fadeIn();
+        } else {
+            $(self.panelQueueToggleCounter).hide();
+        }
 
         if (self.showQueueOrStack === SHOW_STACK) {
             self.showStackItems();
