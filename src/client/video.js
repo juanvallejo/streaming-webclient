@@ -216,6 +216,13 @@ function Video(videoElement, sTrackElement) {
     this.appendTo = function(parent) {
         parent.appendChild(this.video);
     };
+    
+    this.isStreamKindYouTube = function() {
+        if(!self.loadedData) {
+            return false;
+        }
+        return self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE;
+    };
 
     this.load = function(data) {
         self.pause();
@@ -309,6 +316,11 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
+            return;
+        }
+
+        var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
+        if (!isPlaying) {
             return;
         }
 

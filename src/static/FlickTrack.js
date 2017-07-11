@@ -380,6 +380,9 @@ var Emitter = require('./proto/emitter.js');
 var MAX_SEARCH_CACHE_RESULTS = 10;
 var MAX_MEDIA_TITLE_LENGTH = 39;
 
+var SHOW_SEARCH_ALT_CONTROLS = 0;
+var SHOW_ITEM_ALT_CONTROLS = 1;
+
 var SHOW_QUEUE = 1;
 var SHOW_STACK = 2;
 
@@ -389,6 +392,7 @@ var CONTROLS_PLAYPAUSE = 2;
 var CONTROLS_NEXT = 3;
 
 var ALT_CONTROLS_EXIT = 0;
+var ALT_CONTROLS_QUEUE_MOVEUP = 1;
 
 var CONTROLS_PLAYPAUSE_PLAY = 0;
 var CONTROLS_PLAYPAUSE_PAUSE = 1;
@@ -421,7 +425,8 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.controlPrev = controlsElemCollection.item(CONTROLS_PREV);
     this.controlPlayPause = controlsElemCollection.item(CONTROLS_PLAYPAUSE);
 
-    this.altControlExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
+    this.altCtrlSearchPanelExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
+    this.altCtrlQueueItemMoveUp = altControlsElemCollection.item(ALT_CONTROLS_QUEUE_MOVEUP);
 
     this.panelQueueToggle = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE);
     this.panelQueueToggleCounter = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE_COUNTER);
@@ -459,6 +464,8 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.queueState = [];
     this.callbacks = {};
 
+    this.queueActiveItem = null;
+
     this.getSearchPanel = function() {
         return this.searchPanel;
     };
@@ -477,7 +484,8 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         $(pauseButton).hide();
 
         // hide alt controls
-        $(self.altControlExit.parentNode).hide();
+        $(self.altCtrlSearchPanelExit.parentNode).hide();
+        $(self.altCtrlQueueItemMoveUp.parentNode).hide();
 
         // hide notification counter
         $(self.panelQueueToggleCounter).hide();
@@ -525,16 +533,39 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         $(this.panelQueue).fadeOut();
         $(this.panelResults).fadeIn();
 
-        $(this.searchButton.parentNode).fadeOut();
-        $(this.altControlExit.parentNode).fadeIn();
+        // reset active queue item
+        if (self.queueActiveItem) {
+            self.queueActiveItem.click();
+            self.queueActiveItem = null;
+        }
+
+        this.showAltControls();
     };
 
     this.showQueuePanel = function() {
         $(this.panelResults).fadeOut();
         $(this.panelQueue).fadeIn();
 
-        $(this.altControlExit.parentNode).fadeOut();
-        $(this.searchButton.parentNode).fadeIn();
+        this.showPlaybackControls();
+    };
+
+    this.showAltControls = function(mode) {
+        $(this.searchButton.parentNode).stop().fadeOut();
+        $(this.altCtrlQueueItemMoveUp.parentNode).stop().fadeOut();
+        $(this.altCtrlSearchPanelExit.parentNode).stop().fadeOut();
+
+        if(mode === SHOW_ITEM_ALT_CONTROLS) {
+            $(this.altCtrlQueueItemMoveUp.parentNode).stop().fadeIn();
+            return;
+        }
+
+        $(this.altCtrlSearchPanelExit.parentNode).stop().fadeIn();
+    };
+
+    this.showPlaybackControls = function() {
+        $(this.altCtrlSearchPanelExit.parentNode).stop().fadeOut();
+        $(this.altCtrlQueueItemMoveUp.parentNode).stop().fadeOut();
+        $(this.searchButton.parentNode).stop().fadeIn();
     };
 
     this.setVolume = function(vol) {
@@ -716,31 +747,9 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         var items = self.queueState;
         if (!items.length) {
             self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in the queue.</span></span>';
-            return;
         }
 
-        for(var i = 0; i < items.length; i++) {
-            var name = items[i].name;
-            var kind = items[i].kind;
-            var thumb = items[i].thumb;
-            
-            // check cache for cached information if missing
-            var cachedData = self.searchCache[items[i].url];
-            if (cachedData) {
-                if(!name) {
-                    name = cachedData.getName();
-                }
-                if(!thumb) {
-                    thumb = cachedData.getThumb();
-                }
-                if(!kind) {
-                    kind = cachedData.getKind();
-                }
-            }
-            
-            var item = new Result(name, kind, items[i].url, thumb);
-            item.appendTo(self.panelQueue);
-        }
+        this.showQueueOrStackItems(items);
     };
 
     this.showStackItems = function() {
@@ -750,8 +759,22 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         var items = self.stackState;
         if (!items.length) {
             self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in your queue.</span></span>';
+        }
+
+        self.showQueueOrStackItems(items);
+    };
+
+    this.showQueueOrStackItems = function(items) {
+        if (!items.length) {
+            self.queueActiveItem = null;
+            self.showPlaybackControls();
             return;
         }
+
+        // activeOrphanPanelItem signifies whether a queue / stack
+        // item was active before, but no longer exists in the given
+        // updated list of items.
+        var activeOrphanPanelItem = true;
 
         for(var i = 0; i < items.length; i++) {
             var name = items[i].name;
@@ -770,10 +793,55 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                 if(!kind) {
                     kind = cachedData.getKind();
                 }
+            } else {
+                // TODO:
+                // cache miss - store item in list outside of loop
+                // and at the end of it make an http request to the
+                // api for data (maybe one request for multiple items).
             }
 
             var item = new Result(name, kind, items[i].url, thumb);
             item.appendTo(self.panelQueue);
+            item.onClick((function(item, vidUrl) {
+                return function() {
+                    if (item.isClicked) {
+                        self.queueActiveItem = null;
+                        item.setClicked(false);
+                        item.removeClass(self.classNameControlActive);
+                        self.showPlaybackControls();
+                        return;
+                    }
+
+                    // reset other "active" item in the queue
+                    if (self.queueActiveItem) {
+                        self.queueActiveItem.click();
+                    }
+
+                    item.setClicked(true);
+                    item.addClass(self.classNameControlActive);
+                    self.showAltControls(SHOW_ITEM_ALT_CONTROLS);
+                    self.queueActiveItem = item;
+                }
+            })(item, items[i].url));
+
+            // determine if item was previously active
+            if (self.queueActiveItem && self.queueActiveItem.getUrl() === items[i].url) {
+                activeOrphanPanelItem = false;
+                item.click();
+            }
+        }
+
+        // reset controls panel back to playback controls panel if
+        // activeOrphanPanel === true and self.queueActiveItem === true
+        if(activeOrphanPanelItem && self.queueActiveItem) {
+            self.queueActiveItem = null;
+            self.showPlaybackControls();
+            return;
+        }
+        
+        // if we made it this far, an active item exists; scroll to it
+        if(self.queueActiveItem) {
+            self.queueActiveItem.scrollFrom(self.panelQueue);
         }
     };
 
@@ -864,6 +932,23 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         });
     };
 
+    this.handleAltControlMoveItemUp = function() {
+        // de-select item
+        // self.queueActiveItem.click();
+
+        if (!self.queueActiveItem) {
+            console.log("WARN: attempt to hoist queue or stack item with no active item.");
+            return;
+        }
+
+        if (self.showQueueOrStack === SHOW_QUEUE) {
+            self.emit("chatcommand", ["/queue order next " + self.queueActiveItem.getUrl()]);
+            return;
+        }
+
+        self.emit("chatcommand", ["/queue order mine " + self.queueActiveItem.getUrl() + " 0"])
+    };
+
     $(this.searchButton).on('click', function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handleSearchButton(this, isActive);
@@ -932,8 +1017,12 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         self.emit("opacitytoggle", [false]);
     });
 
-    $(self.altControlExit).on("click", function() {
+    $(self.altCtrlSearchPanelExit).on("click", function() {
         self.showQueuePanel();
+    });
+
+    $(self.altCtrlQueueItemMoveUp).on("click", function() {
+        self.handleAltControlMoveItemUp();
     });
 
     $(window).on("mouseup", function() {
@@ -1143,6 +1232,7 @@ function App(window, document) {
         });
         
         this.controls.on("queuetoggle", function(isQueueShowing) {
+            self.controls.showQueuePanel();
             if (!isQueueShowing) {
                 self.controls.showQueueItems();
                 return;
@@ -1185,6 +1275,10 @@ function App(window, document) {
 
     this.getVideo = function() {
         return this.video;
+    };
+
+    this.getControls = function() {
+        return this.controls;
     };
 
     this.showOutput = function(text, timeout) {
@@ -1332,7 +1426,6 @@ function App(window, document) {
         } else {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
                 self.showOutput('The stream could not be loaded.');
-                self.chat.sendText(self.socket, "system", "/stream stop");
                 return;
             }
         }
@@ -1352,7 +1445,7 @@ function App(window, document) {
 
         if (Math.abs(parseInt(data.extra.playback.time) - parseInt(self.video.getTime())) > 10 && !data.extra.playback.isPaused) {
             if (data.extra.playback.time <= 1) {
-                self.banner.showBanner('Resetting stream, please wait...');
+                self.banner.showBanner('Resetting playback, please wait...');
             } else if (parseInt(data.extra.playback.time) - parseInt(self.video.getTime()) <= 0) {
                 self.banner.showBanner('Seeking stream, please wait...');
             }
@@ -1621,6 +1714,9 @@ function Result(name, kind, url, thumb) {
     };
 
     this.addClass = function(className) {
+        if (self.container.className.indexOf(className) !== -1) {
+            return;
+        }
         self.container.className += " " + className;
     };
 
@@ -1639,6 +1735,14 @@ function Result(name, kind, url, thumb) {
         self.container.className = newClassName.join(" ");
     };
 
+    this.setClicked = function(bool) {
+        this.isClicked = bool;
+    };
+
+    this.click = function() {
+        this.container.click();
+    };
+
     // receives an optional timeout in seconds
     this.disable = function(timeout) {
         this.isClicked = true;
@@ -1650,6 +1754,10 @@ function Result(name, kind, url, thumb) {
                 self.enable();
             }, timeout);
         }
+    };
+
+    this.scrollFrom = function(elem) {
+        $(elem).stop().animate({scrollTop: $(self.container).offset().top});
     };
 
     this.enable = function() {
@@ -1977,6 +2085,13 @@ function Video(videoElement, sTrackElement) {
     this.appendTo = function(parent) {
         parent.appendChild(this.video);
     };
+    
+    this.isStreamKindYouTube = function() {
+        if(!self.loadedData) {
+            return false;
+        }
+        return self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE;
+    };
 
     this.load = function(data) {
         self.pause();
@@ -2070,6 +2185,11 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
+            return;
+        }
+
+        var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
+        if (!isPlaying) {
             return;
         }
 

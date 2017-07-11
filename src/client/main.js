@@ -129,6 +129,7 @@ function App(window, document) {
         });
         
         this.controls.on("queuetoggle", function(isQueueShowing) {
+            self.controls.showQueuePanel();
             if (!isQueueShowing) {
                 self.controls.showQueueItems();
                 return;
@@ -171,6 +172,10 @@ function App(window, document) {
 
     this.getVideo = function() {
         return this.video;
+    };
+
+    this.getControls = function() {
+        return this.controls;
     };
 
     this.showOutput = function(text, timeout) {
@@ -318,7 +323,6 @@ function App(window, document) {
         } else {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
                 self.showOutput('The stream could not be loaded.');
-                self.chat.sendText(self.socket, "system", "/stream stop");
                 return;
             }
         }
@@ -338,7 +342,7 @@ function App(window, document) {
 
         if (Math.abs(parseInt(data.extra.playback.time) - parseInt(self.video.getTime())) > 10 && !data.extra.playback.isPaused) {
             if (data.extra.playback.time <= 1) {
-                self.banner.showBanner('Resetting stream, please wait...');
+                self.banner.showBanner('Resetting playback, please wait...');
             } else if (parseInt(data.extra.playback.time) - parseInt(self.video.getTime()) <= 0) {
                 self.banner.showBanner('Seeking stream, please wait...');
             }

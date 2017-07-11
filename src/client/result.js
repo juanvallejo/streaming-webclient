@@ -66,6 +66,9 @@ function Result(name, kind, url, thumb) {
     };
 
     this.addClass = function(className) {
+        if (self.container.className.indexOf(className) !== -1) {
+            return;
+        }
         self.container.className += " " + className;
     };
 
@@ -84,6 +87,14 @@ function Result(name, kind, url, thumb) {
         self.container.className = newClassName.join(" ");
     };
 
+    this.setClicked = function(bool) {
+        this.isClicked = bool;
+    };
+
+    this.click = function() {
+        this.container.click();
+    };
+
     // receives an optional timeout in seconds
     this.disable = function(timeout) {
         this.isClicked = true;
@@ -95,6 +106,10 @@ function Result(name, kind, url, thumb) {
                 self.enable();
             }, timeout);
         }
+    };
+
+    this.scrollFrom = function(elem) {
+        $(elem).stop().animate({scrollTop: $(self.container).offset().top});
     };
 
     this.enable = function() {

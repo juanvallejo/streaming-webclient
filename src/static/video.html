@@ -320,7 +320,7 @@
             border-left: 1px solid rgba(255,255,255,0.05);
 
         }
-            .controls-container-button:active, .controls-container-active, controls-container-button-alt:active {
+            .controls-container-button:active, .controls-container-active, .controls-container-button-alt:active {
                 background: rgba(0,94,129,0.5);
             }
             .controls-container-button span, .controls-container-button-alt span {
@@ -499,22 +499,27 @@ video, #yt-video {
     </div>
     <div class="controls-container-controls middle-container noselect">
         <div id="controls-container-controls-search" class="controls-container-button middle">
-            <span class="fa fa-search"></span>
+            <span class="fa fa-search" title="open queue / search panel"></span>
         </div>
         <div class="controls-container-button middle">
-            <span class="fa fa-step-backward"></span>
+            <span class="fa fa-step-backward" title="reset stream for everyone"></span>
         </div>
         <div class="controls-container-button middle">
-            <span class="fa fa-play controls-container-button-playpause"></span>
-            <span class="fa fa-pause controls-container-button-playpause"></span>
+            <span class="fa fa-play controls-container-button-playpause" title="play stream for everyone"></span>
+            <span class="fa fa-pause controls-container-button-playpause" title="pause stream for everyone"></span>
         </div>
         <div class="controls-container-button middle">
-            <span class="fa fa-step-forward"></span>
+            <span class="fa fa-step-forward" title="skip current stream"></span>
         </div>
     </div>
     <div class="controls-container-controls middle-container noselect">
         <div class="controls-container-button-alt middle">
-            <span class="fa fa-times"></span>
+            <span class="fa fa-times" title="back to queue"></span>
+        </div>
+    </div>
+    <div class="controls-container-controls middle-container noselect">
+        <div class="controls-container-button-alt middle">
+            <span class="fa fa-arrow-up" title="move to top of queue"></span>
         </div>
     </div>
     <div id="controls-container-info" class="middle-container noselect">
@@ -531,7 +536,7 @@ video, #yt-video {
     <div id="controls-container-panel">
         <div class="opacity-overlay"></div>
         <div id="controls-container-panel-top" class="middle-container">
-            <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle">
+            <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle" title="toggle between your queue and room queue">
                 <div class="controls-container-panel-elem-iconnotif"><span class="controls-container-panel-elem">0</span></div>
                 <span class="fa fa-bars middle-container"></span>
             </div>
@@ -541,15 +546,6 @@ video, #yt-video {
         </div>
         <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem"></div>
         <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">
-            <!--<div class="controls-container-panel-result">-->
-                <!--<div class="controls-container-panel-result-thumb">-->
-                    <!--<span class="fa fa-youtube"></span>-->
-                    <!--&lt;!&ndash;<span class="fa fa-film"></span>&ndash;&gt;-->
-                <!--</div>-->
-                <!--<div class="controls-container-panel-result-info">-->
-                    <!--<span>Untitled<br /><br />https://www.youtube.com/watch?v=08765hgf</span>-->
-                <!--</div>-->
-            <!--</div>-->
             <span class="message-wrapper">
                 <span class="message-inner">Loading queue...</span>
             </span>
@@ -581,7 +577,23 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
 window.onYouTubeIframeAPIReady = function(){
     app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
-}
+};
+
+window.addEventListener("load", function() {
+    // Because the youtube api will attempt to load ads,
+    // they may delay page-load, causing the youtube
+    // player to start playing, even if it's supposed to
+    // be paused. Wait one second, check if a stream has
+    // been loaded, check if kind is 'youtube', check if
+    // it is supposed to be paused, and send pause event.
+    setTimeout(function() {
+        var video = app.getVideo();
+        var controls = app.getControls();
+        if (video.isStreamKindYouTube() && !controls.isPlaying) {
+            video.pause();
+        }
+    }, 1000);
+});
 </script>
 </body>
 </html>
