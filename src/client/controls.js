@@ -410,8 +410,11 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             var name = items[i].name;
             var kind = items[i].kind;
             var thumb = items[i].thumb;
+            var duration = items[i].duration;
 
             // check cache for cached information if missing
+            // we do not worry about cached duration, since that
+            // information is not available through search api
             var cachedData = self.searchCache[items[i].url];
             if (cachedData) {
                 if(!name) {
@@ -423,11 +426,6 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                 if(!kind) {
                     kind = cachedData.getKind();
                 }
-            } else {
-                // TODO:
-                // cache miss - store item in list outside of loop
-                // and at the end of it make an http request to the
-                // api for data (maybe one request for multiple items).
             }
 
             var item = new Result(name, kind, items[i].url, thumb);
@@ -453,6 +451,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                     self.queueActiveItem = item;
                 }
             })(item, items[i].url));
+
+            if (duration) {
+                item.showDuration(secondsToHumanTime(duration));
+            }
 
             // determine if item was previously active
             if (self.queueActiveItem && self.queueActiveItem.getUrl() === items[i].url) {

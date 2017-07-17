@@ -17,6 +17,9 @@ function Result(name, kind, url, thumb) {
     this.thumbSpan = document.createElement("span");
     this.thumbImg = new Image();
 
+    this.duration = document.createElement("div");
+    this.duration.className = "controls-container-panel-result-duration";
+
     this.disableTimeout = null;
 
     if (!thumb) {
@@ -32,6 +35,7 @@ function Result(name, kind, url, thumb) {
     }
 
     this.thumb.appendChild(this.thumbSpan);
+    this.thumb.appendChild(this.duration);
 
     this.info = document.createElement("div");
     this.info.className = "controls-container-panel-result-info";
@@ -40,6 +44,11 @@ function Result(name, kind, url, thumb) {
     // build sub-tree
     this.container.appendChild(this.thumb);
     this.container.appendChild(this.info);
+
+    this.showDuration = function(duration) {
+        this.duration.style.display = "block";
+        this.duration.innerHTML = "<span>" + duration + "</span>"
+    };
 
     this.getName = function() {
         return this.name;
