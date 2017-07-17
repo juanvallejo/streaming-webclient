@@ -1927,12 +1927,22 @@ function Video(videoElement, sTrackElement) {
     this.ytVideoCurrentTime = 0;
     this.ytElem = null;
     this.ytReadyCallbacks = [];
+    this.ytLoadCallbacks = [];
     this.ytPlayerReady = false;
 
+
+    this.isPlaying = false;
 
     // ignores the actual HTMLEntity when adding
     // an event listener to this wrapper object.
     this.EVT_IGNORE_ELEM = true;
+
+    // youtube iframe player events
+    this.YT_PLAYER_STATE_UNSTARTED = -1;
+    this.YT_PLAYER_STATE_ENDED     = 0;
+    this.YT_PLAYER_STATE_PLAYING   = 1;
+    this.YT_PLAYER_STATE_PAUSED    = 2;
+    this.YT_PLAYER_STATE_BUFFERING = 3;
 
     // handlers
     this.defaultSubtitlesHandler = function(path, handler) {
@@ -2017,7 +2027,18 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.onYtPlayerStateChange = function(evt) {
+        // catch video player state changes
+        // and stop player if playing, but
+        // current app state is set to pause.
+        if (evt.data === self.YT_PLAYER_STATE_PLAYING) {
+            if (!self.isPlaying) {
+                self.pause();
+            }
+        }
+    };
 
+    this.onYtPlayerLoad = function(callback) {
+        this.ytLoadCallbacks.push(callback);
     };
 
     this.loadYtVideo = function(videoId) {
@@ -2027,6 +2048,11 @@ function Video(videoElement, sTrackElement) {
                 'func': 'loadVideoById',
                 'args': [videoId, 0, 'large']
             }), "*");
+
+            // call onload callbacks
+            while (self.ytLoadCallbacks.length) {
+                self.ytLoadCallbacks.shift().call(self, videoId);
+            }
         });
     };
 
@@ -2169,6 +2195,8 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
+        this.isPlaying = true;
+
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             this.playYtVideo();
             return;
@@ -2214,6 +2242,8 @@ function Video(videoElement, sTrackElement) {
             console.log("WARN:", 'attempt to pause video with no data loaded.');
             return;
         }
+
+        this.isPlaying = false;
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();

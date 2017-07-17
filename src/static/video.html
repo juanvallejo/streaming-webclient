@@ -603,22 +603,6 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 window.onYouTubeIframeAPIReady = function(){
     app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
 };
-
-window.addEventListener("load", function() {
-    // Because the youtube api will attempt to load ads,
-    // they may delay page-load, causing the youtube
-    // player to start playing, even if it's supposed to
-    // be paused. Wait one second, check if a stream has
-    // been loaded, check if kind is 'youtube', check if
-    // it is supposed to be paused, and send pause event.
-    setTimeout(function() {
-        var video = app.getVideo();
-        var controls = app.getControls();
-        if (video.isStreamKindYouTube() && !controls.isPlaying) {
-            video.pause();
-        }
-    }, 1000);
-});
 </script>
 </body>
 </html>
