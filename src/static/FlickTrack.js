@@ -393,6 +393,7 @@ var CONTROLS_NEXT = 3;
 
 var ALT_CONTROLS_EXIT = 0;
 var ALT_CONTROLS_QUEUE_MOVEUP = 1;
+var ALT_CONTROLS_QUEUE_ITEM_DELETE = 2;
 
 var CONTROLS_PLAYPAUSE_PLAY = 0;
 var CONTROLS_PLAYPAUSE_PAUSE = 1;
@@ -427,6 +428,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.altCtrlSearchPanelExit = altControlsElemCollection.item(ALT_CONTROLS_EXIT);
     this.altCtrlQueueItemMoveUp = altControlsElemCollection.item(ALT_CONTROLS_QUEUE_MOVEUP);
+    this.altCtrlQueueItemDelete = altControlsElemCollection.item(ALT_CONTROLS_QUEUE_ITEM_DELETE);
 
     this.panelQueueToggle = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE);
     this.panelQueueToggleCounter = searchPanelElemCollection.item(SEARCH_PANEL_QUEUE_TOGGLE_COUNTER);
@@ -951,6 +953,21 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         self.emit("chatcommand", ["/queue order mine " + self.queueActiveItem.getUrl() + " 0"])
     };
 
+    this.handleAltControlDeleteItem = function() {
+        if (!self.queueActiveItem) {
+            console.log("WARN: attempt to delete queue or stack item with no active item.");
+            return;
+        }
+
+        if (self.showQueueOrStack === SHOW_QUEUE) {
+            self.emit("chatcommand", ["/queue clear room " + self.queueActiveItem.getUrl()]);
+            return;
+        }
+
+        self.emit("chatcommand", ["/queue clear mine " + self.queueActiveItem.getUrl()])
+
+    };
+
     $(this.searchButton).on('click', function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handleSearchButton(this, isActive);
@@ -1025,6 +1042,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     $(self.altCtrlQueueItemMoveUp).on("click", function() {
         self.handleAltControlMoveItemUp();
+    });
+
+    $(self.altCtrlQueueItemDelete).on("click", function() {
+        self.handleAltControlDeleteItem();
     });
 
     $(window).on("mouseup", function() {
