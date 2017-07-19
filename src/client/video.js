@@ -252,6 +252,12 @@ function Video(videoElement, sTrackElement) {
 
     this.load = function(data) {
         self.pause();
+
+        // clear previously loaded html5 video source if any
+        if (self.video.src) {
+            self.video.currentTime = 0;
+        }
+
         self.sourceFileError = false;
         self.loadedData = data.extra;
         self.videoStreamKind = data.extra.stream.kind;

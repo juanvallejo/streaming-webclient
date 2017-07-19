@@ -508,9 +508,7 @@ function parseSockData(b64) {
     if (typeof b64 !== "string") {
         return b64;
     }
-
-    var str = atob(b64);
-    return JSON.parse(str);
+    return JSON.parse(atob(b64));
 }
 
 window.App = App;

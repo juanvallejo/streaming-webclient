@@ -110,7 +110,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.init = function() {
         // display queue
-        $(self.searchButton).click();
+        // $(self.searchButton).click();
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
@@ -206,6 +206,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
 
     this.pause = function() {
+        if (!self.isPlaying) {
+            return;
+        }
+
         self.isPlaying= false;
         var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
         var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
@@ -223,6 +227,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
 
     this.play = function() {
+        if (self.isPlaying) {
+            return;
+        }
+
         self.isPlaying = true;
         var playButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PLAY];
         var pauseButton = $(self.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
@@ -311,7 +319,6 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             count++;
         }
         if(count > MAX_SEARCH_CACHE_RESULTS) {
-            console.log("RESET CACHE");
             self.searchCache = {};
         }
 
