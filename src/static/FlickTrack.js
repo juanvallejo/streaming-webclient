@@ -927,14 +927,14 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         self.searchBarRequestInProgress = true;
         self.setSearchPanelMessage("Loading, please wait...");
 
-        var xhr = new XMLHttpRequest()
+        var xhr = new XMLHttpRequest();
         xhr.open("GET", "/api/youtube/search/" + encodeURIComponent(query));
         xhr.send();
         xhr.addEventListener("readystatechange", function() {
             self.searchBarRequestInProgress = false;
             if (xhr.readyState === 4 && xhr.status === 200) {
                 try {
-                    var data = JSON.parse(xhr.responseText)
+                    var data = JSON.parse(xhr.responseText);
                     self.updateSearchPanel(data.items || []);
                 } catch(e) {
                     self.setSearchPanelMessage("Error fetching search results...");
@@ -2339,8 +2339,8 @@ function Video(videoElement, sTrackElement) {
         }
 
         self.videoVolume += val;
-        if (self.videoVolume > 1) {
-            self.videoVolume = 1;
+        if (self.videoVolume >= 1) {
+            self.videoVolume = 0.99;
         }
 
         window.localStorage.volume = self.videoVolume;

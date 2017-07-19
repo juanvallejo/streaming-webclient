@@ -433,8 +433,8 @@ function Video(videoElement, sTrackElement) {
         }
 
         self.videoVolume += val;
-        if (self.videoVolume > 1) {
-            self.videoVolume = 1;
+        if (self.videoVolume >= 1) {
+            self.videoVolume = 0.99;
         }
 
         window.localStorage.volume = self.videoVolume;
