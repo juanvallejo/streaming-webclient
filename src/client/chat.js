@@ -146,25 +146,24 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		message.id = 'chat-container-view-message';
 		message.innerHTML = (!data.system ? ('<span id="chat-container-view-message-user" class="text-hl-name">' + data.user + ': ') : '') + '</span><span id="chat-container-view-message-text">' + data.message + '</span>';
 
-		if (data.images && data.images.length) {
+		if (data.extra && data.extra.images && data.extra.images.length) {
 			var noun = 'image';
-			if (data.images.length > 1) {
+			if (data.extra.images.length > 1) {
 				noun += 's';
 			}
 
 			var images = [];
 			var imagesLoaded = 0;
 			message.innerHTML += '<span class="block full-size images-loading-text">[loading ' + noun + '...]</span>';
-			for (var i = 0; i < data.images.length; i++) {
+			for (var i = 0; i < data.extra.images.length; i++) {
 				images[i] = new Image();
-				images[i].src = data.images[i];
+				images[i].src = data.extra.images[i];
 				images[i].addEventListener('load', function(image, message) {
 					return function() {
 						checkImagesLoaded(message);
 						
 						image.style.cursor = 'pointer';
 						image.addEventListener('click', function() {
-							console.log('fuck', image.src);
 							window.open(image.src, '_blank');
 						});
 
@@ -218,7 +217,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 
 		this.view.appendChild(message);
 
-		if ((data.images && data.images.length > 1)) {
+		if (data.extra && (data.extra.images && data.extra.images.length > 1)) {
 			this.view.scrollTop = this.view.scrollHeight * 2;
 			return;
 		}
