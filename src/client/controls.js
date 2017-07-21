@@ -89,6 +89,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     this.defaultPlayingOpacity = 0.7;
 
     this.searchBarRequestInProgress = false;
+    this.searchPanelShowing = false;
 
     this.showQueueOrStack = SHOW_QUEUE;
     this.searchCache = {}; // cache for search result information - [url]->Result
@@ -162,6 +163,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
 
     this.showSearchPanel = function() {
+        self.searchPanelShowing = true;
         $(this.panelQueue).fadeOut();
         $(this.panelResults).fadeIn();
 
@@ -174,8 +176,13 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
         this.showAltControls();
     };
 
-    this.showQueuePanel = function() {
+    this.hideSearchPanel = function() {
+        self.searchPanelShowing = false;
         $(this.panelResults).fadeOut();
+    };
+
+    this.showQueuePanel = function() {
+        this.hideSearchPanel();
         $(this.panelQueue).fadeIn();
 
         this.showPlaybackControls();
@@ -195,6 +202,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
     };
 
     this.showPlaybackControls = function() {
+        if (self.searchPanelShowing) {
+            return;
+        }
+
         $(this.altCtrlSearchPanelExit.parentNode).stop().fadeOut();
         $(this.altCtrlQueueItemMoveUp.parentNode).stop().fadeOut();
         $(this.searchButton.parentNode).stop().fadeIn();
