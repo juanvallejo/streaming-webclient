@@ -305,6 +305,13 @@ function App(window, document) {
             return
         }
 
+        if (data.extra.startedBy) {
+            self.chat.addMessage({
+                user: "[Now Playing] " + data.extra.startedBy,
+                message: '"' + (data.extra.stream.name || data.extra.stream.url) + '"'
+            });
+        }
+
         self.socket.send("request_streamsync");
         self.socket.send("request_queuesync");
 

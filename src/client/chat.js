@@ -222,7 +222,7 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 			return;
 		}
 		$(this.view).animate({
-			scrollTop: this.view.scrollHeight
+			scrollTop: self.view.scrollHeight
 		}, 500);
 	};
 
