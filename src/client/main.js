@@ -211,6 +211,13 @@ function App(window, document) {
             }, 1000);
         }
 
+        // restore user queue from last connection id
+        if (self.localStorage.lastSavedQueueId) {
+            var lastQueueId = self.localStorage.lastSavedQueueId;
+            delete self.localStorage.lastSavedQueueId;
+            self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
+        }
+
         if (self.video.savedTimer) {
             // TODO: it would be ideal to have the clickable overlay
             // at the begining of a stopped stream resume using this
@@ -311,6 +318,13 @@ function App(window, document) {
     });
 
     this.socket.on('stacksync', function(data) {
+        // if received user-queue items and a user id, store in
+        // localstorage under current id, else clear existing save
+        if (data.id && data.extra.items && data.extra.items.length) {
+            window.localStorage.lastSavedQueueId = data.id;
+        } else if (window.localStorage.lastSavedQueueId){
+            delete window.localStorage.lastSavedQueueId;
+        }
         self.controls.updateStack(data.extra.items || [])
     });
     

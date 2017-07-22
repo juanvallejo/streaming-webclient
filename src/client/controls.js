@@ -111,7 +111,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.init = function() {
         // display queue
-        // $(self.searchButton).click();
+        $(self.searchButton).click();
 
         var pauseButton = $(this.controlPlayPause).children()[CONTROLS_PLAYPAUSE_PAUSE];
         $(pauseButton).hide();
