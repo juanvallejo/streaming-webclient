@@ -254,14 +254,13 @@ function Video(videoElement, sTrackElement) {
         self.pause();
 
         // clear previously loaded html5 video source if any
-        if (self.video.src) {
+        if (self.video.src && self.video.currentTime) {
             self.video.currentTime = 0;
         }
 
         self.sourceFileError = false;
         self.loadedData = data.extra;
         self.videoStreamKind = data.extra.stream.kind;
-        self.pause();
         if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
             self.showYtPlayer();

@@ -242,6 +242,10 @@ function App(window, document) {
         self.video.canStartStream = false;
         self.connectionLost = true;
 
+        if (self.localStorage.lastSavedQueueId) {
+            delete self.localStorage.lastSavedQueueId;
+        }
+
         // TODO: add reconnection logic
         self.showOutput('The stream will resume momentarily.<br />Please stand by.');
     });
@@ -303,13 +307,6 @@ function App(window, document) {
             && data.extra.stream.kind !== Cons.STREAM_KIND_LOCAL) {
             self.showOutput("Server asked to load invalid stream type", '"' + data.extra.stream.kind + '"')
             return
-        }
-
-        if (data.extra.startedBy) {
-            self.chat.addMessage({
-                user: "[Now Playing] " + data.extra.startedBy,
-                message: '"' + (data.extra.stream.name || data.extra.stream.url) + '"'
-            });
         }
 
         self.socket.send("request_streamsync");
