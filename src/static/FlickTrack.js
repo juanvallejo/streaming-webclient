@@ -2288,10 +2288,10 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
-        var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
-        if (!isPlaying) {
-            return;
-        }
+        // var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
+        // if (!isPlaying) {
+        //     return;
+        // }
 
         try {
             self.video.pause();
