@@ -69,8 +69,8 @@ function App(window, document) {
             return;
         }
 
-        this.out.innerHTML = "Welcome.<br />Load a video with <span class='text-hl-name'>/stream load &lt;url&gt;</span>"
-        this.out.innerHTML += "<br />Type <span class='text-hl-name'>/help</span> for available options."
+        this.out.innerHTML = "Welcome.<br />Queue a video by using the <span class='text-hl-name'>panel to the left.</span>"
+        this.out.innerHTML += "<br />Press <span class='text-hl-name'>play</span> to begin room playback."
 
         // add main overlay event listener
         this.out.addEventListener('click', function() {
