@@ -343,43 +343,84 @@
             border-left: 1px solid rgba(255,255,255,0.05);
 
         }
-            .controls-container-button:active, .controls-container-active, .controls-container-button-alt:active {
+            .controls-container-button:active, .controls-container-active, .controls-container-button-alt:active, .button span:active {
                 background: rgba(0,94,129,0.5);
             }
             .controls-container-button span, .controls-container-button-alt span {
                 display: inline-block;
             }
 
-#chat-container {
+.chat-container-elem {
     min-width: 300px;
     width: 400px;
     max-width: 55%;
-    min-height: 50%;
-    height: 600px;
-    max-height: 600px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     border-left: 1px solid rgba(255,255,255,0.05);
     top: 0;
     right: 0;
 }
-	#chat-container-input {
+#chat-container.chat-container-minimized {
+    min-height: 5%;
+    height: 100px;
+    max-height: 100px;
+    position: absolute;
+}
+    #chat-container.chat-container-minimized #chat-container-input {
+        height: 40%;
+    }
+    #chat-container.chat-container-minimized #chat-container-view {
+        height: 60%;
+    }
+
+#chat-container {
+    min-height: 50%;
+    height: 600px;
+    max-height: 600px;
+}
+	#chat-container-input { /* ////-- */
 		position: absolute;
 		bottom: 0;
 		left: 0;
 		width: 100%;
 		padding: 0;
 		height: 7%;
+        text-align: left;
 	}
 		#chat-container-input input {
 			border-width: 1px 0 0 0;
 			border-color: rgba(255,255,255,0.15);
-			position: absolute;
-			padding: 0 2%;
+			/*position: absolute;*/
+			display: inline-block;
+            padding: 0 2%;
 			left: 0;
 			margin: 0;
-			width: 96%;
+			min-width: 70%;
+            max-width: 100%;
 			height: 100%;
+            float: left;
 		}
+        #chat-container-input .button {
+            display: inline-block;
+            min-width: 50px;
+            height: 100%;
+            border-width: 1px 0 0 1px;
+            border-color: rgba(255,255,255,0.1);
+            border-style: solid;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+            float: left;
+        }
+            #chat-container-input .button .span-wrapper {
+                width: 100%;
+                height: 100%;
+                display: table;
+                text-align: center;
+            }
+                #chat-container-input .button span {
+                    vertical-align: middle;
+                    display: table-cell;
+                }
 	#chat-container-view {
 		opacity: 0.1;
 		position: absolute;
@@ -578,11 +619,21 @@ video, #yt-video {
         </div>
     </div>
 </div>
-<div id="chat-container" class="user-controls">
+<div id="chat-container" class="user-controls chat-container-elem">
     <div class="opacity-overlay"></div>
     <div id="chat-container-view"></div>
     <div id="chat-container-input">
-        <input type="text" class="chat-container-input" />
+        <input type="text" class="chat-container-input chat-container-input-elem" />
+        <div class="button chat-container-input-elem">
+            <div class="span-wrapper">
+                <span class="fa fa-users" title="list users in room"></span>
+            </div>
+        </div>
+        <div class="button chat-container-input-elem">
+            <div class="span-wrapper">
+                <span class="fa fa-minus" title="minimize chat window"></span>
+            </div>
+        </div> <!-- ////-- -->
     </div>
     <div id="chat-container-overlay">
         <div class="full-size">

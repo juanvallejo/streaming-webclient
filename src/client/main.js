@@ -28,9 +28,9 @@ function App(window, document) {
     this.defaultInterfaceOpacity = 0.8;
     
     this.chat = new Chat(
-        document.getElementById('chat-container'),
+        document.getElementsByClassName('chat-container-elem'),
         document.getElementById('chat-container-view'),
-        document.getElementById('chat-container-input').children[0],
+        document.getElementsByClassName('chat-container-input-elem'),
         document.getElementById('chat-container-username-input'),
         document.getElementById('chat-container-overlay')
     );
@@ -256,6 +256,11 @@ function App(window, document) {
         self.chat.register(data.user);
         if (!self.chat.isHidden()) {
             self.chat.focusInput();
+        }
+
+        var minimizedButtonActive = $(self.chat.minimizeButton).hasClass(self.chat.classNameControlActive);
+        if (self.chat.isMinimized && self.chat.isRegistered && !minimizedButtonActive) {
+            $(self.chat.minimizeButton).click();
         }
         self.chat.hideOverlay();
         self.chat.unlockOverlay();

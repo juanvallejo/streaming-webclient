@@ -46,18 +46,26 @@ module.exports = Banner;
 
 var Emitter = require('./proto/emitter.js');
 
-function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
+var INPUT_ELEM_INPUT = 0;
+var INPUT_ELEM_USERS = 1;
+var INPUT_ELEM_MINIM = 2;
+
+var CONTAINER_ELEM_CONTAINER = 0;
+
+function Chat(containerElemCollection, viewElem, inputElemCollection, usernameInputElem, overlayElem) {
 	var self = this;
 
 	this.viewElemDefaultOpacity = 0.8;
 
-	this.container = container;
+	this.container = containerElemCollection.item(CONTAINER_ELEM_CONTAINER);
 	this.view = viewElem;
-	this.input = inputElem;
+	this.input = inputElemCollection.item(INPUT_ELEM_INPUT);
+	this.usersButton = inputElemCollection.item(INPUT_ELEM_USERS);
+	this.minimizeButton = inputElemCollection.item(INPUT_ELEM_MINIM);
 	this.focused = false;
 	this.hidden = false;
-	this.width = container.clientWidth;
-	this.height = container.clientHeight;
+	this.width = this.container.clientWidth;
+	this.height = this.container.clientHeight;
 	this.timeout = null;
 	this.chatHideDelay = 2000;
 	this.hasMouseOver = false;
@@ -65,8 +73,12 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 	this.user = 'Anonymous';
 	this.overlay = overlayElem;
 	this.usernameInput = usernameInputElem;
+	this.isMinimized = localStorage.minimizedChat;
 
-	this.getView = function() {
+    this.classNameControlActive = 'controls-container-active';
+    this.classNameContainerMinimized = 'chat-container-minimized';
+
+    this.getView = function() {
 		return this.view;
 	};
 	this.getInput = function() {
@@ -265,7 +277,10 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 		}
 		$(this.view).animate({
 			scrollTop: self.view.scrollHeight
-		}, 500);
+		}, {
+			duration: 500,
+			queue: false
+		});
 	};
 
 	this.sendText = function(socket, sender, text) {
@@ -314,6 +329,75 @@ function Chat(container, viewElem, inputElem, usernameInputElem, overlayElem) {
 				break;
 		}
 	};
+
+	this.showMinimizedChat = function() {
+	    this.isMinimized = true;
+
+		$(this.container).addClass(self.classNameContainerMinimized);
+		this.addMessage({
+            system: true,
+            user: 'system',
+            message: 'chat minimized'
+        });
+
+		localStorage.minimizedChat = true;
+	};
+
+	this.showMaximizedChat = function() {
+        this.isMinimized = false;
+
+        delete localStorage.minimizedChat;
+        $(this.container).removeClass(self.classNameContainerMinimized);
+    };
+
+	this.handleMinimizeButton = function(button, isActive) {
+        if (isActive) {
+            $(button).removeClass(self.classNameControlActive);
+        } else {
+            $(button).addClass(self.classNameControlActive);
+        }
+
+        if (!isActive) {
+        	self.showMinimizedChat();
+        	return;
+		}
+
+		self.showMaximizedChat();
+	};
+
+    this.handleUsersButton = function(button, isActive) {
+        if (this.isMinimized) {
+            this.addMessage({
+                system: true,
+                user: 'system',
+                message: 'error: this view is not available in minimized mode'
+            });
+            return;
+        }
+
+        // if (isActive) {
+        //     $(button).removeClass(self.classNameControlActive);
+        // } else {
+        //     $(button).addClass(self.classNameControlActive);
+        // }
+        this.addMessage({
+            system: true,
+            user: 'system',
+            message: 'note: this view is not fully implemented yet'
+        });
+
+        self.emit('submit', [(localStorage.username || self.getUsername()), '/user list']);
+    };
+
+    $(this.minimizeButton).on('click', function() {
+        var isActive = $(this).hasClass(self.classNameControlActive);
+        self.handleMinimizeButton(this, isActive);
+    });
+
+    $(this.usersButton).on('click', function() {
+        var isActive = $(this).hasClass(self.classNameControlActive);
+        self.handleUsersButton(this, isActive);
+    });
 
 	this.input.addEventListener('focus', function() {
 		self.isFocused(true);
@@ -1171,9 +1255,9 @@ function App(window, document) {
     this.defaultInterfaceOpacity = 0.8;
     
     this.chat = new Chat(
-        document.getElementById('chat-container'),
+        document.getElementsByClassName('chat-container-elem'),
         document.getElementById('chat-container-view'),
-        document.getElementById('chat-container-input').children[0],
+        document.getElementsByClassName('chat-container-input-elem'),
         document.getElementById('chat-container-username-input'),
         document.getElementById('chat-container-overlay')
     );
@@ -1399,6 +1483,11 @@ function App(window, document) {
         self.chat.register(data.user);
         if (!self.chat.isHidden()) {
             self.chat.focusInput();
+        }
+
+        var minimizedButtonActive = $(self.chat.minimizeButton).hasClass(self.chat.classNameControlActive);
+        if (self.chat.isMinimized && self.chat.isRegistered && !minimizedButtonActive) {
+            $(self.chat.minimizeButton).click();
         }
         self.chat.hideOverlay();
         self.chat.unlockOverlay();
