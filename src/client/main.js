@@ -29,7 +29,7 @@ function App(window, document) {
     
     this.chat = new Chat(
         document.getElementsByClassName('chat-container-elem'),
-        document.getElementById('chat-container-view'),
+        document.getElementsByClassName('chat-container-view-elem'),
         document.getElementsByClassName('chat-container-input-elem'),
         document.getElementById('chat-container-username-input'),
         document.getElementById('chat-container-overlay')
@@ -69,8 +69,9 @@ function App(window, document) {
             return;
         }
 
-        this.out.innerHTML = "Welcome.<br />Queue a video by using the <span class='text-hl-name'>panel to the left.</span>"
-        this.out.innerHTML += "<br />Press <span class='text-hl-name'>play</span> to begin room playback."
+        this.out.innerHTML = '';
+        // this.out.innerHTML = "Welcome.<br />Queue a video by using the <span class='text-hl-name'>panel to the left.</span>"
+        // this.out.innerHTML += "<br />Press <span class='text-hl-name'>play</span> to begin room playback."
 
         // add main overlay event listener
         this.out.addEventListener('click', function() {
@@ -142,6 +143,10 @@ function App(window, document) {
         this.chat.on('submit', function(user, msg) {
             this.sendText(self.socket, user, msg);
             this.focusInput();
+        });
+        
+        this.chat.on('socketevent', function(e, data) {
+            self.socket.send(e, data || {});
         });
 
         this.chat.on('username_submit', function(username) {
@@ -251,6 +256,9 @@ function App(window, document) {
     });
 
     this.socket.on('updateusername', function(data) {
+        self.chat.hideOverlay();
+        self.chat.unlockOverlay();
+
         data = parseSockData(data);
         self.localStorage.username = data.user;
         self.chat.register(data.user);
@@ -262,13 +270,23 @@ function App(window, document) {
         if (self.chat.isMinimized && self.chat.isRegistered && !minimizedButtonActive) {
             $(self.chat.minimizeButton).click();
         }
-        self.chat.hideOverlay();
-        self.chat.unlockOverlay();
+
+        self.socket.send('request_userlist');
+        if (self.chat.isDisplayingUserView) {
+            if (self.chat.isMinimized) {
+                self.chat.hideUserView();
+                return;
+            }
+
+            $(self.chat.usersButton).click();
+        }
 
         self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
     });
 
     this.socket.on('info_updateusername', function(data) {
+        self.socket.send('request_userlist');
+
         data = parseSockData(data);
         if (data.user === self.localStorage.username || (data.extra && data.extra.oldUser === self.localStorage.username)) {
             return self.banner.showBanner('<span class="text-hl-name">You</span> are now known as ' + data.user);
@@ -435,6 +453,14 @@ function App(window, document) {
         self.controls.play();
     });
 
+    this.socket.on('userlist', function(data) {
+        if (!data.clients) {
+            return;
+        }
+        
+        self.chat.showUsers(data.clients);
+    });
+
     this.socket.on('info_clienterror', function(data) {
         data = parseSockData(data);
         self.chat.unlockOverlay();
@@ -444,11 +470,13 @@ function App(window, document) {
     this.socket.on('info_clientjoined', function(data) {
         data = parseSockData(data);
         self.banner.showBanner('client <span class="text-hl-name">' + data.id + '</span> has joined the stream.');
+        self.socket.send('request_userlist');
     });
 
     this.socket.on('info_clientleft', function(data) {
         data = parseSockData(data);
         self.banner.showBanner('client <span class="text-hl-name">' + (data.user || data.id) + '</span> has left the stream.');
+        self.socket.send('request_userlist');
     });
 
     this.socket.on('system_ping', function() {

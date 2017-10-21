@@ -10,13 +10,17 @@ var INPUT_ELEM_MINIM = 2;
 
 var CONTAINER_ELEM_CONTAINER = 0;
 
-function Chat(containerElemCollection, viewElem, inputElemCollection, usernameInputElem, overlayElem) {
+var VIEW_ELEM_USER = 0;
+var VIEW_ELEM_CHAT = 1;
+
+function Chat(containerElemCollection, viewElemCollection, inputElemCollection, usernameInputElem, overlayElem) {
 	var self = this;
 
 	this.viewElemDefaultOpacity = 0.8;
 
 	this.container = containerElemCollection.item(CONTAINER_ELEM_CONTAINER);
-	this.view = viewElem;
+	this.view = viewElemCollection.item(VIEW_ELEM_CHAT);
+	this.userView = viewElemCollection.item(VIEW_ELEM_USER);
 	this.input = inputElemCollection.item(INPUT_ELEM_INPUT);
 	this.usersButton = inputElemCollection.item(INPUT_ELEM_USERS);
 	this.minimizeButton = inputElemCollection.item(INPUT_ELEM_MINIM);
@@ -32,6 +36,7 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
 	this.overlay = overlayElem;
 	this.usernameInput = usernameInputElem;
 	this.isMinimized = localStorage.minimizedChat;
+    this.isDisplayingUserView = localStorage.displayUserView;
 
     this.classNameControlActive = 'controls-container-active';
     this.classNameContainerMinimized = 'chat-container-minimized';
@@ -113,7 +118,9 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
 	};
 
 	this.hideOverlay = function() {
-		this.view.style.opacity = this.viewElemDefaultOpacity;
+	    for (var i = 0; i < viewElemCollection.length; i++) {
+	        viewElemCollection.item(i).style.opacity = this.viewElemDefaultOpacity;
+        }
 		this.overlay.style.display = 'none';
 	};
 
@@ -125,6 +132,31 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
 	this.unlockOverlay = function() {
 		this.usernameInput.value = '';
 		this.usernameInput.removeAttribute("disabled");
+	};
+
+	this.showUsers = function(users) {
+	    if (this.usersButton.children.length) {
+	        if(this.usersButton.children[0].children.length > 1) {
+                if (this.usersButton.children[0].children[1].children[0]) {
+                    this.usersButton.children[0].children[1].children[0].innerHTML = (users.length || '0');
+                }
+            }
+        }
+
+        if (!users || !users.length) {
+	        this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-middle-wrapper"><span class="chat-container-view-message-middle">Unable to display users at this time.</span></span>';
+	        return;
+        }
+	    this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-center"><span class="chat-container-view-message-text">List of users</span></span>';
+
+	    for (var i = 0; i < users.length; i++) {
+	        var hlClassName = '';
+	        if (users[i].username === self.getUsername() || users[i].id === self.getUsername()) {
+	            hlClassName = ' text-hl-name';
+            }
+
+	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
+        }
 	};
 
 	this.isHidden = function() {
@@ -155,8 +187,8 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
 
 	this.addMessage = function(data) {
 		var message = document.createElement('span');
-		message.id = 'chat-container-view-message';
-		message.innerHTML = (!data.system ? ('<span id="chat-container-view-message-user" class="text-hl-name">' + data.user + ': ') : '') + '</span><span id="chat-container-view-message-text">' + data.message + '</span>';
+		message.className = 'chat-container-view-message';
+		message.innerHTML = (!data.system ? ('<span class="chat-container-view-message-user text-hl-name">' + data.user + ': ') : '') + '</span><span class="chat-container-view-message-text">' + data.message + '</span>';
 
 		if (data.extra && data.extra.images && data.extra.images.length) {
 			var noun = 'image';
@@ -308,6 +340,22 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
         $(this.container).removeClass(self.classNameContainerMinimized);
     };
 
+	this.showUserView = function() {
+	    this.isDisplayingUserView = true;
+
+	    $(this.view).addClass('chat-container-display-user-view');
+	    $(this.userView).addClass('chat-container-display-user-view');
+        localStorage.displayUserView = true;
+    };
+
+	this.hideUserView = function() {
+	    this.isDisplayingUserView = false;
+
+	    delete localStorage.displayUserView;
+        $(this.view).removeClass('chat-container-display-user-view');
+        $(this.userView).removeClass('chat-container-display-user-view');
+    };
+
 	this.handleMinimizeButton = function(button, isActive) {
         if (isActive) {
             $(button).removeClass(self.classNameControlActive);
@@ -324,7 +372,7 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
 	};
 
     this.handleUsersButton = function(button, isActive) {
-        if (this.isMinimized) {
+        if (!isActive && this.isMinimized) {
             this.addMessage({
                 system: true,
                 user: 'system',
@@ -333,18 +381,20 @@ function Chat(containerElemCollection, viewElem, inputElemCollection, usernameIn
             return;
         }
 
-        // if (isActive) {
-        //     $(button).removeClass(self.classNameControlActive);
-        // } else {
-        //     $(button).addClass(self.classNameControlActive);
-        // }
-        this.addMessage({
-            system: true,
-            user: 'system',
-            message: 'note: this view is not fully implemented yet'
-        });
+        if (isActive) {
+            $(button).removeClass(self.classNameControlActive);
+        } else {
+            $(button).addClass(self.classNameControlActive);
+        }
 
-        self.emit('submit', [(localStorage.username || self.getUsername()), '/user list']);
+        if (isActive) {
+            self.hideUserView();
+            return
+        }
+
+        this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-middle-wrapper"><span class="chat-container-view-message-middle">Loading, please wait...</span></span>';
+        self.emit('socketevent', ['request_userlist']);
+        self.showUserView();
     };
 
     $(this.minimizeButton).on('click', function() {

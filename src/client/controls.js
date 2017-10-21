@@ -396,7 +396,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
         var items = self.queueState;
         if (!items.length) {
-            self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">No items in the queue.</span></span>';
+            self.panelQueue.innerHTML = '<span class="message-wrapper"><span class="message-inner">Queue a video<br />by using the search bar above.</span></span>';
         }
 
         this.showQueueOrStackItems(items);
