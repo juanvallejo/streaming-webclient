@@ -80,6 +80,10 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	this.isMinimized = localStorage.minimizedChat;
     this.isDisplayingUserView = localStorage.displayUserView;
 
+    // track users in userView
+    this.userViewStartedBy = '';
+    this.users = [];
+
     this.classNameControlActive = 'controls-container-active';
     this.classNameContainerMinimized = 'chat-container-minimized';
 
@@ -177,7 +181,9 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	};
 
 	this.showUsers = function(users) {
-	    if (this.usersButton.children.length) {
+        this.users = users || [];
+
+        if (this.usersButton.children.length) {
 	        if(this.usersButton.children[0].children.length > 1) {
                 if (this.usersButton.children[0].children[1].children[0]) {
                     this.usersButton.children[0].children[1].children[0].innerHTML = (users.length || '0');
@@ -197,7 +203,12 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	            hlClassName = ' text-hl-name';
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
+            var currentDj = '';
+            if (self.userViewStartedBy && (users[i].username === self.userViewStartedBy || users[i].id === self.userViewStartedBy)) {
+                currentDj = '<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>'
+            }
+
+	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + currentDj + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
         }
 	};
 
@@ -847,6 +858,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
             var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
             var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
+            item.hideDuration();
             item.appendTo(self.panelResults);
             item.onClick((function(item, vidUrl) {
                 return function() {
@@ -1645,6 +1657,12 @@ function App(window, document) {
             }
         }
 
+        // mark user as origin of current stream
+        if (data.extra && data.extra.startedBy) {
+            self.chat.userViewStartedBy = data.extra.startedBy;
+            self.chat.showUsers(self.chat.users);
+        }
+
         self.controls.setMediaTitle(data.extra.stream.name || data.extra.stream.url);
         self.controls.setMediaDuration(data.extra.stream.duration);
         self.controls.setMediaElapsed(data.extra.playback.time);
@@ -1874,6 +1892,13 @@ var Cons = require('./constants.js');
 function Result(name, kind, url, thumb) {
     var self = this;
 
+    // truncate name
+    if (name && name.length > 47) {
+        var n = name.split('');
+        n.splice(46, name.length - 46);
+        name = n.join('') + '...';
+    }
+
     this.name = name || "Untitled";
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
@@ -1915,6 +1940,10 @@ function Result(name, kind, url, thumb) {
     // build sub-tree
     this.container.appendChild(this.thumb);
     this.container.appendChild(this.info);
+
+    this.hideDuration = function() {
+        this.duration.style.display = 'none';
+    };
 
     this.showDuration = function(duration) {
         this.duration.style.display = "block";

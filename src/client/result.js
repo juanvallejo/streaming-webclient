@@ -3,6 +3,13 @@ var Cons = require('./constants.js');
 function Result(name, kind, url, thumb) {
     var self = this;
 
+    // truncate name
+    if (name && name.length > 47) {
+        var n = name.split('');
+        n.splice(46, name.length - 46);
+        name = n.join('') + '...';
+    }
+
     this.name = name || "Untitled";
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
@@ -44,6 +51,10 @@ function Result(name, kind, url, thumb) {
     // build sub-tree
     this.container.appendChild(this.thumb);
     this.container.appendChild(this.info);
+
+    this.hideDuration = function() {
+        this.duration.style.display = 'none';
+    };
 
     this.showDuration = function(duration) {
         this.duration.style.display = "block";

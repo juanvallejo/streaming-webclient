@@ -408,7 +408,7 @@
             position: relative;
             display: inline-block;
             min-width: 50px;
-            height: 100%;
+            height: 99%;
             border-width: 1px 0 0 1px;
             border-color: rgba(255,255,255,0.1);
             border-style: solid;
@@ -461,6 +461,29 @@
     }
         #chat-container-user-view .chat-container-view-message {
             border-bottom: 1px solid rgba(255,255,255,0.05);
+            min-height: 10px;
+            position: relative;
+        }
+            #chat-container-user-view .chat-container-view-message-status {
+                width: 50px;
+                position: absolute;
+                top: 0;
+                right: 0;
+                height: 100%;
+                text-align: center;
+            }
+                #chat-container-user-view .chat-container-view-message-status .fa-wrapper {
+                    width: 100%;
+                    height: 100%;
+                    display: table;
+                    text-align: center;
+                }
+                #chat-container-user-view .chat-container-view-message-status .fa-wrapper span {
+                    display: table-cell;
+                    vertical-align: middle;
+                    padding-right: 8px;
+                }
+        #chat-container-user-view .chat-container-view-message-text {
         }
         #chat-container-user-view.chat-container-display-user-view {
             display: block;

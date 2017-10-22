@@ -344,6 +344,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
             var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
             var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
+            item.hideDuration();
             item.appendTo(self.panelResults);
             item.onClick((function(item, vidUrl) {
                 return function() {

@@ -368,6 +368,12 @@ function App(window, document) {
             }
         }
 
+        // mark user as origin of current stream
+        if (data.extra && data.extra.startedBy) {
+            self.chat.userViewStartedBy = data.extra.startedBy;
+            self.chat.showUsers(self.chat.users);
+        }
+
         self.controls.setMediaTitle(data.extra.stream.name || data.extra.stream.url);
         self.controls.setMediaDuration(data.extra.stream.duration);
         self.controls.setMediaElapsed(data.extra.playback.time);

@@ -38,6 +38,10 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	this.isMinimized = localStorage.minimizedChat;
     this.isDisplayingUserView = localStorage.displayUserView;
 
+    // track users in userView
+    this.userViewStartedBy = '';
+    this.users = [];
+
     this.classNameControlActive = 'controls-container-active';
     this.classNameContainerMinimized = 'chat-container-minimized';
 
@@ -135,7 +139,9 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	};
 
 	this.showUsers = function(users) {
-	    if (this.usersButton.children.length) {
+        this.users = users || [];
+
+        if (this.usersButton.children.length) {
 	        if(this.usersButton.children[0].children.length > 1) {
                 if (this.usersButton.children[0].children[1].children[0]) {
                     this.usersButton.children[0].children[1].children[0].innerHTML = (users.length || '0');
@@ -155,7 +161,12 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	            hlClassName = ' text-hl-name';
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
+            var currentDj = '';
+            if (self.userViewStartedBy && (users[i].username === self.userViewStartedBy || users[i].id === self.userViewStartedBy)) {
+                currentDj = '<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>'
+            }
+
+	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + currentDj + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
         }
 	};
 
