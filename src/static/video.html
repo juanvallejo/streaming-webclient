@@ -64,6 +64,45 @@
         bottom: 100px;
         z-index: 3;
     }
+    #controls-container-panel-overlay {
+        display: none;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 3;
+        -moz-box-shadow:    inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
+        -webkit-box-shadow: inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
+        box-shadow:         inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
+    }
+        #controls-container-panel-overlay-close {
+            width: 10%;
+            height: 10%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            z-index: 1;
+        }
+            #controls-container-panel-overlay-close:active {
+                background: rgba(0,94,129,0.5);
+            }
+        #controls-container-panel-overlay-wrapper {
+            width: 100%;
+            height: 100%;
+            display: table;
+            text-align: center;
+            z-index: 0;
+            vertical-align: middle;
+        }
+            #controls-container-panel-overlay-wrapper iframe {
+                display: table-cell;
+                padding-top: 17%;
+                width: 100%;
+                height: 60%;
+                vertical-align: middle;
+            }
     #controls-container-panel-closearea {
 
     }
@@ -174,6 +213,20 @@
                 text-align: center;
             }
 
+        #controls-container-panel-results .controls-container-panel-result {
+
+        }
+            #controls-container-panel-results .controls-container-panel-result:active {
+                background: transparent;
+            }
+
+            #controls-container-panel-results .controls-container-panel-result-info:active {
+                background: rgba(0,94,129,0.5);
+            }
+            #controls-container-panel-results .controls-container-panel-result-thumb:active {
+                opacity: 0.8;
+            }
+
         .controls-container-panel-result {
             width: 100%;
             height: 20%;
@@ -199,6 +252,7 @@
                 left: 0;
                 display: table;
                 text-align: center;
+                z-index: 2;
             }
                 .controls-container-panel-result-thumb span {
                     display: table-cell;
@@ -283,6 +337,14 @@
             left: 0;
             z-index: 2;
         }
+            #controls-container-vol-slider.controls-container-volume-elem.muted {
+
+            }
+
+            #controls-container-vol.muted #controls-container-vol-slider.controls-container-volume-elem {
+                background: rgba(165,170,174,0.1);
+                border-top: 1.5px solid rgba(165,170,174,0.1);
+            }
 
     #controls-container-info {
         width: 85%;
@@ -446,7 +508,7 @@
                     display: table-cell;
                 }
 
-    #chat-container-user-view { /* ////-- */
+    #chat-container-user-view {
         opacity: 0.1;
         display: none;
         left: 0;
@@ -455,8 +517,8 @@
         overflow-y: scroll;
         height: 40%;
         word-wrap: break-word;
-        -moz-box-shadow:    inset 0 -40px 40px -40px white;
-        -webkit-box-shadow: inset 0 -40px 40px -40px white;
+        -moz-box-shadow:    inset 0 -40px 40px -40px rgba(0,0,0,0.75);
+        -webkit-box-shadow: inset 0 -40px 40px -40px rgba(0,0,0,0.75);
         box-shadow:         inset 0 -40px 40px -40px rgba(0,0,0,0.75);
     }
         #chat-container-user-view .chat-container-view-message {
@@ -472,15 +534,7 @@
                 height: 100%;
                 text-align: center;
             }
-                #chat-container-user-view .chat-container-view-message-status .fa-wrapper {
-                    width: 100%;
-                    height: 100%;
-                    display: table;
-                    text-align: center;
-                }
                 #chat-container-user-view .chat-container-view-message-status .fa-wrapper span {
-                    display: table-cell;
-                    vertical-align: middle;
                     padding-right: 8px;
                 }
         #chat-container-user-view .chat-container-view-message-text {
@@ -593,6 +647,16 @@
 .full-size-hor {
 	width: 100%;
 }
+.fa-wrapper {
+    width: 100%;
+    height: 100%;
+    display: table;
+    text-align: center;
+}
+    .fa-wrapper span {
+        display: table-cell;
+        vertical-align: middle;
+    }
 .middle {
 	display: table-cell;
 	vertical-align: middle;
@@ -694,6 +758,14 @@ video, #yt-video {
         </div>
     </div>
     <div id="controls-container-panel">
+        <div id="controls-container-panel-overlay">
+            <div id="controls-container-panel-overlay-close">
+                <span class="fa-wrapper">
+                    <span class="fa fa-close"></span>
+                </span>
+            </div>
+            <div id="controls-container-panel-overlay-wrapper"></div>
+        </div>
         <div class="opacity-overlay"></div>
         <div id="controls-container-panel-top" class="middle-container">
             <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle" title="toggle between your queue and room queue">

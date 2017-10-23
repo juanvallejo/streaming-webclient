@@ -4,9 +4,9 @@ function Result(name, kind, url, thumb) {
     var self = this;
 
     // truncate name
-    if (name && name.length > 47) {
+    if (name && name.length > 45) {
         var n = name.split('');
-        n.splice(46, name.length - 46);
+        n.splice(46, name.length - 44);
         name = n.join('') + '...';
     }
 
@@ -85,6 +85,14 @@ function Result(name, kind, url, thumb) {
         self.container.addEventListener("click", handler || function(e) {});
     };
 
+    this.onInfoClick = function(handler) {
+        self.info.addEventListener("click", handler || function(e) {});
+    };
+
+    this.onThumbClick = function(handler) {
+        self.thumb.addEventListener("click", handler || function(e) {});
+    };
+
     this.addClass = function(className) {
         if (self.container.className.indexOf(className) !== -1) {
             return;
@@ -115,6 +123,14 @@ function Result(name, kind, url, thumb) {
         this.container.click();
     };
 
+    this.getInfoElem = function() {
+        return this.info;  
+    };
+    
+    this.getThumbElem = function() {
+        return this.thumb;  
+    };
+    
     // receives an optional timeout in seconds
     this.disable = function(timeout) {
         this.isClicked = true;

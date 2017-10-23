@@ -10,6 +10,9 @@ var Emitter = require('./proto/emitter.js');
 var MAX_SEARCH_CACHE_RESULTS = 10;
 var MAX_MEDIA_TITLE_LENGTH = 39;
 
+var CONTAINER_OVERLAY_CLOSE_BUTTON = 0;
+var CONTAINER_OVERLAY_CONTENT = 1;
+
 var SHOW_SEARCH_ALT_CONTROLS = 0;
 var SHOW_ITEM_ALT_CONTROLS = 1;
 
@@ -43,12 +46,17 @@ var VOLUME_SLIDER = 1;
 
 var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
 
-function Controls(container, controlsElemCollection, altControlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
+function Controls(container, containerOverlay, controlsElemCollection, altControlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
     var self = this;
 
     this.container = container;
     this.controlSeek = seekElem;
 
+    this.containerOverlay = containerOverlay;
+    this.containerOverlayCloseButton = containerOverlay.children[CONTAINER_OVERLAY_CLOSE_BUTTON];
+    this.containerOverlayContent = containerOverlay.children[CONTAINER_OVERLAY_CONTENT];
+
+    this.volumeSliderIcon = volumeElemCollection.item(VOLUME_ICON);
     this.volumeSlider = volumeElemCollection.item(VOLUME_SLIDER);
 
     this.searchButton = controlsElemCollection.item(CONTROLS_SEARCH);
@@ -72,11 +80,14 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     this.classNameControlActive = 'controls-container-active';
     this.classNameUserControls = 'user-controls';
+    this.classNameVolumeDefault = 'fa-volume-up';
+    this.classNameVolumeMuted = 'fa-volume-off';
 
     this.controlsHideTimeout = null;
     this.hidden = false;
     this.hasMouseOver = false;
 
+    this.isDisplayingVideoPreview = false;
     this.isPlaying = false;
     this.playbackTimer = 0;
     this.playbackTotal = 0;
@@ -346,7 +357,7 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
             item.hideDuration();
             item.appendTo(self.panelResults);
-            item.onClick((function(item, vidUrl) {
+            item.onInfoClick((function(item, vidUrl) {
                 return function() {
                     if (item.isClicked) {
                         return;
@@ -360,9 +371,39 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));
+
+            item.onThumbClick((function(item, videoId) {
+                return function() {
+                    self.showVideoPreview(videoId);
+                }
+            })(item, items[i].id.videoId));
         }
     };
-    
+
+    this.showVideoPreview = function(videoId) {
+        self.isDisplayingVideoPreview = true;
+
+        self.emit("streamcontrol", ["mute", []]);
+        $(self.volumeSlider.parentNode).addClass('muted');
+        $(self.volumeSliderIcon).removeClass(self.classNameVolumeDefault);
+        $(self.volumeSliderIcon).addClass(self.classNameVolumeMuted);
+
+        $(this.containerOverlay).fadeIn();
+        this.containerOverlayContent.innerHTML = '<iframe border="0" src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&controls=1"></iframe>';
+    };
+
+    this.hideVideoPreview = function() {
+        self.isDisplayingVideoPreview = false;
+
+        $(self.volumeSlider.parentNode).removeClass('muted');
+        $(self.volumeSliderIcon).removeClass(self.classNameVolumeMuted);
+        $(self.volumeSliderIcon).addClass(self.classNameVolumeDefault);
+
+        this.containerOverlayContent.innerHTML = '';
+        $(this.containerOverlay).fadeOut();
+        self.emit("streamcontrol", ["unmute", []]);
+    };
+
     this.updateQueue = function(items) {
         self.queueState = items;
 
@@ -503,6 +544,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
             $(button).removeClass(self.classNameControlActive);
         } else {
             $(button).addClass(self.classNameControlActive);
+        }
+
+        if (isActive && self.isDisplayingVideoPreview) {
+            self.hideVideoPreview();
         }
 
         $(self.panelQueue.parentNode).slideToggle(function() {
@@ -687,6 +732,10 @@ function Controls(container, controlsElemCollection, altControlsElemCollection, 
 
     $(self.altCtrlSearchPanelExit).on("click", function() {
         self.showQueuePanel();
+    });
+
+    $(self.containerOverlayCloseButton).on("click", function() {
+        self.hideVideoPreview();
     });
 
     $(self.altCtrlQueueItemMoveUp).on("click", function() {

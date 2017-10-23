@@ -44,6 +44,7 @@ function App(window, document) {
 
     this.controls = new Controls(
         document.getElementById("controls-container"),
+        document.getElementById("controls-container-panel-overlay"),
         document.getElementsByClassName("controls-container-button"),
         document.getElementsByClassName("controls-container-button-alt"),
         document.getElementsByClassName("controls-container-info-inner"),

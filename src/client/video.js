@@ -165,6 +165,26 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.muteYtVideoVolume = function() {
+        self.onYtPlayerReady(function(frame) {
+            frame.contentWindow.postMessage(JSON.stringify({
+                'event': 'command',
+                'func': 'mute',
+                'args': []
+            }), "*");
+        });
+    };
+
+    this.unmuteYtVideoVolume = function() {
+        self.onYtPlayerReady(function(frame) {
+            frame.contentWindow.postMessage(JSON.stringify({
+                'event': 'command',
+                'func': 'unMute',
+                'args': []
+            }), "*");
+        });
+    };
+
     this.setYtVideoVolume = function(vol) {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -507,6 +527,14 @@ function Video(videoElement, sTrackElement) {
         }
 
         self.video.volume = self.videoVolume;
+    };
+    
+    this.mute = function() {
+        self.muteYtVideoVolume();
+    };
+    
+    this.unmute = function() {
+        self.unmuteYtVideoVolume();
     };
 
     this.getDuration = function() {
