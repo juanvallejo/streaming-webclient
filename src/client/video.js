@@ -526,15 +526,29 @@ function Video(videoElement, sTrackElement) {
             return;
         }
 
+        if (self.video.muted) {
+            self.video.muted = false;
+        }
+
         self.video.volume = self.videoVolume;
     };
     
     this.mute = function() {
-        self.muteYtVideoVolume();
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
+            self.muteYtVideoVolume();
+            return;
+        }
+
+        self.video.muted = true;
     };
     
     this.unmute = function() {
-        self.unmuteYtVideoVolume();
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
+            self.unmuteYtVideoVolume();
+            return;
+        }
+
+        self.video.muted = false;
     };
 
     this.getDuration = function() {
