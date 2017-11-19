@@ -210,6 +210,9 @@ function App(window, document) {
 
     // register socket events
     this.socket.on('connect', function() {
+        // request authorization roles
+        self.socket.send("request_authorization");
+
         // if username already stored, set as current username
         if (self.localStorage.username) {
             setTimeout(function() {
@@ -339,6 +342,43 @@ function App(window, document) {
         if (self.controls.stackState.length) {
             self.socket.send("request_stacksync");
         }
+    });
+
+    this.socket.on('httprequest', function(data) {
+        data = parseSockData(data);
+        if (data.error) {
+            self.chat.addMessage({
+                system: true,
+                user: 'system',
+                message: "error: " + data.error
+            });
+            return;
+        }
+
+        var endpoint = data.extra.endpoint;
+        var method = data.extra.method || 'GET';
+
+        if (!endpoint) {
+            self.chat.addMessage({
+                system: true,
+                user: 'system',
+                message: 'error: the server asked the client to initiate a request against an empty or invalid endpoint.'
+            });
+            return;
+        }
+
+        request(method, endpoint, function(response) {
+            var message = response.message;
+            if (response.error) {
+                message = response.error;
+            }
+
+            self.chat.addMessage({
+                system: true,
+                user: 'system',
+                message: message
+            });
+        });
     });
 
     this.socket.on('queuesync', function(data) {
@@ -560,6 +600,19 @@ function App(window, document) {
         //     }
         // }
     });
+}
+
+function request(method, endpoint, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, endpoint);
+    xhr.withCredentials = true;
+    xhr.addEventListener('readystatechange', function() {
+        if (xhr.readyState === 4) {
+            callback(JSON.parse(xhr.responseText));
+        }
+    });
+
+    xhr.send();
 }
 
 function parseSockData(b64) {
