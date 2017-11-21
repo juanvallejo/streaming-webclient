@@ -15,7 +15,9 @@ var Constants = {
 
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
-	STREAM_KIND_TWITCH: 'twitch'
+	STREAM_KIND_TWITCH: 'twitch',
+	
+	ROLE_KIND_ADMIN: 'admin'
 };
 
 module.exports = Constants;

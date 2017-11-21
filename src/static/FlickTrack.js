@@ -45,6 +45,7 @@ module.exports = Banner;
  */
 
 var Emitter = require('./proto/emitter.js');
+var Cons = require('./constants.js');
 
 var INPUT_ELEM_INPUT = 0;
 var INPUT_ELEM_USERS = 1;
@@ -203,12 +204,16 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	            hlClassName = ' text-hl-name';
             }
 
-            var currentDj = '';
+            var statuses = [];
+			if (users[i].roles.length && users[i].roles.indexOf(Cons.ROLE_KIND_ADMIN) !== -1) {
+                statuses.unshift('<span class="fa-wrapper" title="This user is an admin"><span class="fa fa-star"></span></span>');
+			}
+
             if (self.userViewStartedBy && (users[i].username === self.userViewStartedBy || users[i].id === self.userViewStartedBy)) {
-                currentDj = '<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>'
+                statuses.unshift('<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>');
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + currentDj + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
+	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
         }
 	};
 
@@ -489,7 +494,7 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 Chat.prototype = new Emitter();
 
 module.exports = Chat;
-},{"./proto/emitter.js":6}],3:[function(require,module,exports){
+},{"./constants.js":3,"./proto/emitter.js":6}],3:[function(require,module,exports){
 /**
  * application constants
  */
@@ -507,7 +512,9 @@ var Constants = {
 
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
-	STREAM_KIND_TWITCH: 'twitch'
+	STREAM_KIND_TWITCH: 'twitch',
+	
+	ROLE_KIND_ADMIN: 'admin'
 };
 
 module.exports = Constants;
@@ -1626,6 +1633,10 @@ function App(window, document) {
         self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
     });
 
+    this.socket.on('info_userlistupdated', function(data) {
+        self.socket.send('request_userlist');
+    });
+
     this.socket.on('info_updateusername', function(data) {
         self.socket.send('request_userlist');
 
@@ -1709,13 +1720,13 @@ function App(window, document) {
             var message = response.message;
             if (response.error) {
                 message = response.error;
+                self.chat.addMessage({
+                    system: true,
+                    user: 'system',
+                    message: message
+                });
+                return;
             }
-
-            self.chat.addMessage({
-                system: true,
-                user: 'system',
-                message: message
-            });
         });
     });
 
@@ -1946,7 +1957,12 @@ function request(method, endpoint, callback) {
     xhr.withCredentials = true;
     xhr.addEventListener('readystatechange', function() {
         if (xhr.readyState === 4) {
-            callback(JSON.parse(xhr.responseText));
+            var response = xhr.responseText;
+            if (response) {
+                response = JSON.parse(response);
+            }
+
+            callback(response || {});
         }
     });
 

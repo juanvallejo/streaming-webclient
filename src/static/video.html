@@ -527,12 +527,13 @@
             position: relative;
         }
             #chat-container-user-view .chat-container-view-message-status {
-                width: 50px;
+                width: 50%;
                 position: absolute;
                 top: 0;
                 right: 0;
                 height: 100%;
-                text-align: center;
+                text-align: right;
+                padding-right: 10px;
             }
                 #chat-container-user-view .chat-container-view-message-status .fa-wrapper span {
                     padding-right: 8px;
@@ -648,9 +649,9 @@
 	width: 100%;
 }
 .fa-wrapper {
-    width: 100%;
+    min-width: 40px;
     height: 100%;
-    display: table;
+    display: inline-table;
     text-align: center;
 }
     .fa-wrapper span {

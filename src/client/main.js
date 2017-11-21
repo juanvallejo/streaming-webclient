@@ -288,6 +288,10 @@ function App(window, document) {
         self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
     });
 
+    this.socket.on('info_userlistupdated', function(data) {
+        self.socket.send('request_userlist');
+    });
+
     this.socket.on('info_updateusername', function(data) {
         self.socket.send('request_userlist');
 
@@ -371,13 +375,13 @@ function App(window, document) {
             var message = response.message;
             if (response.error) {
                 message = response.error;
+                self.chat.addMessage({
+                    system: true,
+                    user: 'system',
+                    message: message
+                });
+                return;
             }
-
-            self.chat.addMessage({
-                system: true,
-                user: 'system',
-                message: message
-            });
         });
     });
 
@@ -608,7 +612,12 @@ function request(method, endpoint, callback) {
     xhr.withCredentials = true;
     xhr.addEventListener('readystatechange', function() {
         if (xhr.readyState === 4) {
-            callback(JSON.parse(xhr.responseText));
+            var response = xhr.responseText;
+            if (response) {
+                response = JSON.parse(response);
+            }
+
+            callback(response || {});
         }
     });
 

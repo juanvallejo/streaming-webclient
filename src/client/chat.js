@@ -3,6 +3,7 @@
  */
 
 var Emitter = require('./proto/emitter.js');
+var Cons = require('./constants.js');
 
 var INPUT_ELEM_INPUT = 0;
 var INPUT_ELEM_USERS = 1;
@@ -161,12 +162,16 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	            hlClassName = ' text-hl-name';
             }
 
-            var currentDj = '';
+            var statuses = [];
+			if (users[i].roles.length && users[i].roles.indexOf(Cons.ROLE_KIND_ADMIN) !== -1) {
+                statuses.unshift('<span class="fa-wrapper" title="This user is an admin"><span class="fa fa-star"></span></span>');
+			}
+
             if (self.userViewStartedBy && (users[i].username === self.userViewStartedBy || users[i].id === self.userViewStartedBy)) {
-                currentDj = '<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>'
+                statuses.unshift('<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>');
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + currentDj + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
+	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
         }
 	};
 
