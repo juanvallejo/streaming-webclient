@@ -16,6 +16,8 @@ var Constants = {
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
 	STREAM_KIND_TWITCH: 'twitch',
+
+	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
 	
 	ROLE_KIND_ADMIN: 'admin'
 };

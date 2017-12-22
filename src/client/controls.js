@@ -351,9 +351,31 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             return;
         }
 
+        var playlistItems = [];
+
+        // append queue-all button if displaying playlist
+        var isPlaylist = items[0].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
+        if (isPlaylist) {
+            var queueall = document.createElement('div');
+            queueall.className = 'controls-container-panel-queueall';
+            queueall.innerHTML = 'Queue all playlist items'
+            queueall.addEventListener('click', function() {
+                // TODO: consider modifying the queue add command.
+            });
+
+            self.panelResults.appendChild(queueall);
+        }
+
         for(var i = 0; i < items.length; i++) {
-            var thumb = "https://img.youtube.com/vi/" + items[i].id.videoId + "/default.jpg";
-            var url = "https://www.youtube.com/watch?v=" + items[i].id.videoId;
+            var isPlaylistItem = items[i].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
+
+            var videoId = items[i].id ? items[i].id.videoId : null;
+            if (isPlaylistItem) {
+                videoId = items[i].snippet.resourceId.videoId;
+            }
+
+            var thumb = "https://img.youtube.com/vi/" + videoId + "/default.jpg";
+            var url = "https://www.youtube.com/watch?v=" + videoId;
             var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
             item.hideDuration();
             item.appendTo(self.panelResults);
@@ -376,7 +398,11 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 return function() {
                     self.showVideoPreview(videoId);
                 }
-            })(item, items[i].id.videoId));
+            })(item, videoId));
+
+            if (isPlaylistItem) {
+                playlistItems.push(item);
+            }
         }
     };
 
@@ -614,8 +640,12 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         self.searchBarRequestInProgress = true;
         self.setSearchPanelMessage("Loading, please wait...");
 
+        if (self.handleYoutubeUriQuery(query)) {
+            return;
+        }
+
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/youtube/search/" + encodeURIComponent(query));
+        xhr.open("GET", "/api/youtube/search/" + encodeYoutubeURIComponent(query));
         xhr.send();
         xhr.addEventListener("readystatechange", function() {
             self.searchBarRequestInProgress = false;
@@ -628,6 +658,64 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             }
         });
+    };
+
+    this.handleYoutubeUriQuery = function(query) {
+        if (!query.match(/^http(s)?:\/\/(www\.)?youtu(\.)?be/gi)) {
+            return false;
+        }
+
+        var id = null;
+        var params = query.split('watch?')[1];
+        if (!params) {
+            // handle "youtu.be" format
+            var segs = query.split('/');
+            segs = segs[segs.length - 1];
+            if (!segs) {
+                return false;
+            }
+
+            segs = segs.split('?');
+            id = segs[0];
+            params = segs[1];
+
+            if (!params) {
+                return false;
+            }
+        }
+
+        params = params.split('&');
+
+        var keys = {};
+        for (var i = 0; i < params.length; i++) {
+            var kv = params[i].split('=');
+            keys[kv[0]] = kv[1];
+        }
+
+        if (keys['v']) {
+            id = keys['v'];
+        }
+
+        if (keys['list']) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/api/youtube/list/" + keys['list']);
+            xhr.send();
+            xhr.addEventListener("readystatechange", function() {
+                self.searchBarRequestInProgress = false;
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        self.updateSearchPanel(data.items || []);
+                    } catch(e) {
+                        self.setSearchPanelMessage("Error fetching playlist results...");
+                    }
+                }
+            });
+
+            return true;
+        }
+
+        return false;
     };
 
     this.handleAltControlMoveItemUp = function() {
@@ -816,6 +904,22 @@ function secondsToHumanTime(secs) {
         secs = "0" + secs;
     }
     return hours + ":" + mins + ":" + secs;
+}
+
+function encodeYoutubeURIComponent(query) {
+    if (!query.match(/^http(s)?:\/\/(www\.)?youtu(\.)?be/gi)) {
+        return encodeURIComponent(query);
+    }
+
+    var params = query.split('watch?')[1];
+    if (!params) {
+        // handle "youtu.be" format
+        query = query.split('?')[0];
+        return encodeURIComponent(query);
+    }
+
+    query = query.split('&')[0];
+    return encodeURIComponent(query);
 }
 
 Controls.prototype = new Emitter();
