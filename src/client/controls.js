@@ -359,9 +359,21 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             var queueall = document.createElement('div');
             queueall.className = 'controls-container-panel-queueall';
             queueall.innerHTML = 'Queue all playlist items'
-            queueall.addEventListener('click', function() {
-                // TODO: consider modifying the queue add command.
-            });
+            queueall.addEventListener('click', (function(self, items) {
+                return function() {
+                    if (self.isDisabled) {
+                        return;
+                    }
+
+                    self.isDisabled = true;
+                    $(self).fadeOut();
+
+                    // TODO: consider modifying the queue add command to receive multiple arguments.
+                    for (var i = 0; i < items.length; i++) {
+                        items[i].clickInfo();
+                    }
+                }
+            })(queueall, playlistItems));
 
             self.panelResults.appendChild(queueall);
         }

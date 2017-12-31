@@ -2,15 +2,18 @@ var Cons = require('./constants.js');
 
 function Result(name, kind, url, thumb) {
     var self = this;
-
-    // truncate name
-    if (name && name.length > 45) {
-        var n = name.split('');
-        n.splice(46, name.length - 44);
-        name = n.join('') + '...';
-    }
+    var nameTruncated = false;
 
     this.name = name || "Untitled";
+
+    // truncate name
+    if (this.name.length > 45) {
+        var n = this.name.split('');
+        n.splice(46, this.name.length - 44);
+        this.name = n.join('') + '...';
+        nameTruncated = true;
+    }
+
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
     this.thumbImgUrl = thumb;
@@ -47,6 +50,10 @@ function Result(name, kind, url, thumb) {
     this.info = document.createElement("div");
     this.info.className = "controls-container-panel-result-info";
     this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.url + "</span>";
+    if (nameTruncated) {
+        this.info.title = name;
+    }
+
 
     // build sub-tree
     this.container.appendChild(this.thumb);
@@ -117,6 +124,10 @@ function Result(name, kind, url, thumb) {
 
     this.setClicked = function(bool) {
         this.isClicked = bool;
+    };
+
+    this.clickInfo = function() {
+        self.info.click();
     };
 
     this.click = function() {
