@@ -275,6 +275,8 @@
                     font-size: 2em;
                 }
                     .controls-container-panel-result-thumb span img {
+                        width: 100%;
+                        max-height: 100%;
                         vertical-align: middle;
                     }
 
@@ -704,7 +706,7 @@ body {
     overflow: hidden;
 	z-index: 999;
 }
-video, #yt-video {
+video, .api-player {
 	top: 0;
 	left: 0;
 	width: 100%;
@@ -824,16 +826,20 @@ video, #yt-video {
     </div>
 </div>
 <div id="video-overlay" class="overlay"></div>
-<div id="yt-video"></div>
+<div id="yt-video" class="api-player"></div>
+<div id="twitch-video" class="api-player"></div>
+<script src="http://player.twitch.tv/js/embed/v1.js"></script>
 <script>
 var app = new App(window, document);
 app.init();
 
-var tag = document.createElement('script');
-var firstScriptTag = document.getElementsByTagName('script')[0];
-tag.src = "https://www.youtube.com/iframe_api";
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+var ytApiScript = document.createElement('script');
+var referenceTag = document.getElementsByTagName('script')[0];
+ytApiScript.src = "https://www.youtube.com/iframe_api";
+referenceTag.parentNode.insertBefore(ytApiScript, referenceTag);
 
+
+// initialize youtube player as soon as it is ready.
 window.onYouTubeIframeAPIReady = function(){
     app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
 };

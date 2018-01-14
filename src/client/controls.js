@@ -1,5 +1,5 @@
 /**
- * Chat handler
+ * Controls handler
  */
 
 var Result = require('./result.js');
@@ -86,6 +86,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     this.controlsHideTimeout = null;
     this.hidden = false;
     this.hasMouseOver = false;
+    this.isSearchBarFocused = false;
 
     this.isDisplayingVideoPreview = false;
     this.isPlaying = false;
@@ -161,7 +162,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     };
 
     this.hide = function(noAnimation) {
-        if(this.hidden || this.hasMouseOver) {
+        if(this.hidden || this.hasMouseOver || this.isSearchBarFocused) {
             return;
         }
 
@@ -380,15 +381,24 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
         for(var i = 0; i < items.length; i++) {
             var isPlaylistItem = items[i].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
+            var isTwitchVideo = items[i].kind === Cons.TWITCH_ITEM_KIND_ITEM;
 
-            var videoId = items[i].id ? items[i].id.videoId : null;
-            if (isPlaylistItem) {
-                videoId = items[i].snippet.resourceId.videoId;
+            var videoId = items[i].id;
+            var thumb = items[i].thumb;
+            var url = items[i].url;
+
+            var streamKind = Cons.STREAM_KIND_YOUTUBE;
+            if (isTwitchVideo) {
+                streamKind = Cons.STREAM_KIND_TWITCH;
             }
 
-            var thumb = "https://img.youtube.com/vi/" + videoId + "/default.jpg";
-            var url = "https://www.youtube.com/watch?v=" + videoId;
-            var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
+            var title = items[i].title || 'Untitled';
+            var description = url;
+            if (streamKind === Cons.STREAM_KIND_TWITCH) {
+                description = items[i].channel.display_name + " - " + items[i].game;
+            }
+
+            var item = new Result(title, streamKind, url, thumb, description);
             item.hideDuration();
             item.appendTo(self.panelResults);
             item.onInfoClick((function(item, vidUrl) {
@@ -528,7 +538,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             }
 
-            var item = new Result(name, kind, items[i].url, thumb);
+            var item = new Result(name, kind, items[i].url, thumb, items[i].url);
             item.appendTo(self.panelQueue);
             item.onClick((function(item, vidUrl) {
                 return function() {
@@ -656,6 +666,11 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             return;
         }
 
+        if (self.handleTwitchUriQuery(query)) {
+            return;
+        }
+
+        // default to youtube search
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "/api/youtube/search/" + encodeYoutubeURIComponent(query));
         xhr.send();
@@ -730,6 +745,39 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         return false;
     };
 
+    this.handleTwitchUriQuery = function(query) {
+        if (!query.match(/^http(s)?:\/\/(www\.)?twitch\.tv/gi)) {
+            return false;
+        }
+
+        var segs = query.split('/videos/');
+        if (segs.length < 2) {
+            return false;
+        }
+
+        var id = segs[1];
+        if (!id) {
+            return false;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/twitch/stream/" + id);
+        xhr.send();
+        xhr.addEventListener("readystatechange", function() {
+            self.searchBarRequestInProgress = false;
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    self.updateSearchPanel(data.items || []);
+                } catch(e) {
+                    self.setSearchPanelMessage("Error fetching playlist results...");
+                }
+            }
+        });
+
+        return true;
+    };
+
     this.handleAltControlMoveItemUp = function() {
         // de-select item
         // self.queueActiveItem.click();
@@ -791,6 +839,14 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     $(self.panelQueueToggle).on("click", function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handlePanelToggleButton(this, isActive);
+    });
+
+    $(self.panelSearchBar).on("focus", function() {
+        self.isSearchBarFocused = true;
+    });
+
+    $(self.panelSearchBar).on("blur", function() {
+        self.isSearchBarFocused = false;
     });
 
     $(self.panelSearchBar).on("keypress", function(e) {

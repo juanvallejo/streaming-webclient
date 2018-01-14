@@ -13,12 +13,23 @@ var Constants = {
 
 	STREAM_URL_PREFIX: '/s/',
 
+	// dom information
+	DOM_YT_CONTAINER: 'yt-video',
+	DOM_TWITCH_CONTAINER: 'twitch-video',
+
+	// server stream api information
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
 	STREAM_KIND_TWITCH: 'twitch',
 
+	// api results information
 	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
-	
+	TWITCH_ITEM_KIND_PLAYLIST_ITEM: 'twitch#playlistItem',
+
+	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
+	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
+
+	// rbac client info
 	ROLE_KIND_ADMIN: 'admin'
 };
 

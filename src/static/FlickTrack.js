@@ -510,19 +510,30 @@ var Constants = {
 
 	STREAM_URL_PREFIX: '/s/',
 
+	// dom information
+	DOM_YT_CONTAINER: 'yt-video',
+	DOM_TWITCH_CONTAINER: 'twitch-video',
+
+	// server stream api information
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
 	STREAM_KIND_TWITCH: 'twitch',
 
+	// api results information
 	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
-	
+	TWITCH_ITEM_KIND_PLAYLIST_ITEM: 'twitch#playlistItem',
+
+	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
+	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
+
+	// rbac client info
 	ROLE_KIND_ADMIN: 'admin'
 };
 
 module.exports = Constants;
 },{}],4:[function(require,module,exports){
 /**
- * Chat handler
+ * Controls handler
  */
 
 var Result = require('./result.js');
@@ -609,6 +620,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     this.controlsHideTimeout = null;
     this.hidden = false;
     this.hasMouseOver = false;
+    this.isSearchBarFocused = false;
 
     this.isDisplayingVideoPreview = false;
     this.isPlaying = false;
@@ -684,7 +696,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     };
 
     this.hide = function(noAnimation) {
-        if(this.hidden || this.hasMouseOver) {
+        if(this.hidden || this.hasMouseOver || this.isSearchBarFocused) {
             return;
         }
 
@@ -903,15 +915,24 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
         for(var i = 0; i < items.length; i++) {
             var isPlaylistItem = items[i].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
+            var isTwitchVideo = items[i].kind === Cons.TWITCH_ITEM_KIND_ITEM;
 
-            var videoId = items[i].id ? items[i].id.videoId : null;
-            if (isPlaylistItem) {
-                videoId = items[i].snippet.resourceId.videoId;
+            var videoId = items[i].id;
+            var thumb = items[i].thumb;
+            var url = items[i].url;
+
+            var streamKind = Cons.STREAM_KIND_YOUTUBE;
+            if (isTwitchVideo) {
+                streamKind = Cons.STREAM_KIND_TWITCH;
             }
 
-            var thumb = "https://img.youtube.com/vi/" + videoId + "/default.jpg";
-            var url = "https://www.youtube.com/watch?v=" + videoId;
-            var item = new Result(items[i].snippet.title, Cons.STREAM_KIND_YOUTUBE, url, thumb);
+            var title = items[i].title || 'Untitled';
+            var description = url;
+            if (streamKind === Cons.STREAM_KIND_TWITCH) {
+                description = items[i].channel.display_name + " - " + items[i].game;
+            }
+
+            var item = new Result(title, streamKind, url, thumb, description);
             item.hideDuration();
             item.appendTo(self.panelResults);
             item.onInfoClick((function(item, vidUrl) {
@@ -1051,7 +1072,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             }
 
-            var item = new Result(name, kind, items[i].url, thumb);
+            var item = new Result(name, kind, items[i].url, thumb, items[i].url);
             item.appendTo(self.panelQueue);
             item.onClick((function(item, vidUrl) {
                 return function() {
@@ -1179,6 +1200,11 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             return;
         }
 
+        if (self.handleTwitchUriQuery(query)) {
+            return;
+        }
+
+        // default to youtube search
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "/api/youtube/search/" + encodeYoutubeURIComponent(query));
         xhr.send();
@@ -1253,6 +1279,39 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         return false;
     };
 
+    this.handleTwitchUriQuery = function(query) {
+        if (!query.match(/^http(s)?:\/\/(www\.)?twitch\.tv/gi)) {
+            return false;
+        }
+
+        var segs = query.split('/videos/');
+        if (segs.length < 2) {
+            return false;
+        }
+
+        var id = segs[1];
+        if (!id) {
+            return false;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/twitch/stream/" + id);
+        xhr.send();
+        xhr.addEventListener("readystatechange", function() {
+            self.searchBarRequestInProgress = false;
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    self.updateSearchPanel(data.items || []);
+                } catch(e) {
+                    self.setSearchPanelMessage("Error fetching playlist results...");
+                }
+            }
+        });
+
+        return true;
+    };
+
     this.handleAltControlMoveItemUp = function() {
         // de-select item
         // self.queueActiveItem.click();
@@ -1314,6 +1373,14 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
     $(self.panelQueueToggle).on("click", function() {
         var isActive = $(this).hasClass(self.classNameControlActive);
         self.handlePanelToggleButton(this, isActive);
+    });
+
+    $(self.panelSearchBar).on("focus", function() {
+        self.isSearchBarFocused = true;
+    });
+
+    $(self.panelSearchBar).on("blur", function() {
+        self.isSearchBarFocused = false;
     });
 
     $(self.panelSearchBar).on("keypress", function(e) {
@@ -1797,12 +1864,6 @@ function App(window, document) {
         data = parseSockData(data);
         self.video.load(data);
 
-        if (data.extra.stream.kind !== Cons.STREAM_KIND_YOUTUBE
-            && data.extra.stream.kind !== Cons.STREAM_KIND_LOCAL) {
-            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.stream.kind + '"')
-            return
-        }
-
         self.socket.send("request_streamsync");
         self.socket.send("request_queuesync");
 
@@ -1869,7 +1930,7 @@ function App(window, document) {
             if (data.extra.stream.duration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.stream.duration;
             }
-        } else {
+        } else if (data.extra.stream.kind === Cons.STREAM_KIND_LOCAL) {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
                 self.showOutput('The stream could not be loaded.');
                 return;
@@ -2037,13 +2098,17 @@ function App(window, document) {
     });
 
     window.addEventListener("message", function(e) {
+        if (typeof e.data !== "string") {
+            return;
+        }
+
         try {
             var data = JSON.parse(e.data);
             if (data.event === "infoDelivery" && data.info) {
                 self.video.ytVideoCurrentTime = data.info.currentTime;
             }
         } catch (err) {
-            console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", err);
+            console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", e.data, err);
         }
     });
 
@@ -2126,7 +2191,7 @@ module.exports = Emitter;
 },{}],7:[function(require,module,exports){
 var Cons = require('./constants.js');
 
-function Result(name, kind, url, thumb) {
+function Result(name, kind, url, thumb, description) {
     var self = this;
     var nameTruncated = false;
 
@@ -2143,6 +2208,7 @@ function Result(name, kind, url, thumb) {
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
     this.thumbImgUrl = thumb;
+    this.description = description;
 
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
@@ -2175,11 +2241,10 @@ function Result(name, kind, url, thumb) {
 
     this.info = document.createElement("div");
     this.info.className = "controls-container-panel-result-info";
-    this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.url + "</span>";
+    this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.description + "</span>";
     if (nameTruncated) {
         this.info.title = name;
     }
-
 
     // build sub-tree
     this.container.appendChild(this.thumb);
@@ -2208,6 +2273,10 @@ function Result(name, kind, url, thumb) {
     
     this.getKind = function() {
         return this.kind;  
+    };
+
+    this.getDescription = function() {
+        return this.description;
     };
 
     this.appendTo = function(elem) {
@@ -2296,6 +2365,8 @@ module.exports = Result;
 function addThumbSpanClass(span, kind) {
     if (kind === Cons.STREAM_KIND_YOUTUBE) {
         span.className = "fa fa-youtube";
+    } else if (kind === Cons.STREAM_KIND_TWITCH) {
+        span.className = "fa fa-twitch";
     } else {
         span.className = "fa fa-film";
     }
@@ -2416,12 +2487,18 @@ function Video(videoElement, sTrackElement) {
     this.subtitlesTrack = sTrackElement;
     this.subtitlesTrackActivated = false;
 
+    this.ytPlayer = null;
     this.ytVideoInfo = {};
     this.ytVideoCurrentTime = 0;
     this.ytElem = null;
     this.ytReadyCallbacks = [];
     this.ytLoadCallbacks = [];
     this.ytPlayerReady = false;
+
+    this.twitchPlayer = null;
+    this.twitchElem = null;
+    this.twitchReadyCallbacks = [];
+    this.twitchPlayerReady = false;
 
 
     this.isPlaying = false;
@@ -2491,9 +2568,21 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.hideTwitchPlayer = function() {
+        self.onTwitchPlayerReady(function() {
+            self.twitchElem.style.display = 'none';
+        });
+    };
+
     this.showYtPlayer = function() {
         self.onYtPlayerReady(function() {
             self.ytElem.style.display = 'block';
+        });
+    };
+
+    this.showTwitchPlayer = function() {
+        self.onTwitchPlayerReady(function() {
+            self.twitchElem.style.display = 'block';
         });
     };
 
@@ -2504,6 +2593,17 @@ function Video(videoElement, sTrackElement) {
         while(self.ytReadyCallbacks.length) {
             self.ytReadyCallbacks.shift().call(self, self.ytPlayer.getIframe());
         }
+    };
+
+    this.callTwitchPlayerCallbacks = function() {
+        self.twitchPlayerReady = true;
+        while(self.twitchReadyCallbacks.length) {
+            self.twitchReadyCallbacks.shift().call(self, self.twitchPlayer);
+        }
+    };
+
+    this.onYtPlayerLoad = function(callback) {
+        this.ytLoadCallbacks.push(callback);
     };
 
     // "safe" wrapper for making youtube iframe api calls.
@@ -2519,6 +2619,15 @@ function Video(videoElement, sTrackElement) {
         this.ytReadyCallbacks.push(callback);
     };
 
+    this.onTwitchPlayerReady = function(callback) {
+        if (this.twitchPlayerReady) {
+            callback.call(self, self.twitchPlayer);
+            return;
+        }
+
+        this.twitchReadyCallbacks.push(callback);
+    };
+
     this.onYtPlayerStateChange = function(evt) {
         // catch video player state changes
         // and stop player if playing, but
@@ -2530,8 +2639,20 @@ function Video(videoElement, sTrackElement) {
         }
     };
 
-    this.onYtPlayerLoad = function(callback) {
-        this.ytLoadCallbacks.push(callback);
+    this.onTwitchPlayerStateChange = function(evt) {
+        // catch video player state events
+        // and prevent twitch player from
+        // continuing playback if global
+        // state is set to stopped or paused.
+        if (evt === Twitch.Player.PLAY) {
+            if (!self.isPlaying) {
+                self.pause();
+            }
+        }
+
+        if (evt === Twitch.Player.ENDED) {
+            // TODO
+        }
     };
 
     this.loadYtVideo = function(videoId) {
@@ -2549,6 +2670,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.loadTwitchVideo = function(videoId) {
+        self.onTwitchPlayerReady(function(player) {
+            player.setVideo(videoId);
+        });
+    };
+
     this.seekYtVideo = function(time) {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -2556,6 +2683,12 @@ function Video(videoElement, sTrackElement) {
                 'func': 'seekTo',
                 'args': [time, "true"]
             }), "*");
+        });
+    };
+
+    this.seekTwitchVideo = function(time) {
+        self.onTwitchPlayerReady(function(player) {
+            player.seek(time);
         });
     };
 
@@ -2569,6 +2702,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.muteTwitchVideoVolume = function() {
+        self.onTwitchPlayerReady(function(player) {
+            player.setMuted(true);
+        });
+    };
+
     this.unmuteYtVideoVolume = function() {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -2576,6 +2715,12 @@ function Video(videoElement, sTrackElement) {
                 'func': 'unMute',
                 'args': []
             }), "*");
+        });
+    };
+
+    this.unmuteTwitchVideoVolume = function() {
+        self.onTwitchPlayerReady(function(player) {
+            player.setMuted(false);
         });
     };
 
@@ -2589,6 +2734,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.setTwitchVideoVolume = function(vol) {
+        self.onTwitchPlayerReady(function(player) {
+            player.setVolume(vol);
+        });
+    };
+
     this.playYtVideo = function() {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -2599,6 +2750,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.playTwitchVideo = function() {
+        self.onTwitchPlayerReady(function(player) {
+            player.play();
+        });
+    };
+
     this.pauseYtVideo = function() {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -2606,6 +2763,12 @@ function Video(videoElement, sTrackElement) {
                 'func': 'pauseVideo',
                 'args': []
             }), "*");
+        });
+    };
+
+    this.pauseTwitchVideo = function() {
+        self.onTwitchPlayerReady(function(player) {
+            player.pause();
         });
     };
 
@@ -2635,6 +2798,35 @@ function Video(videoElement, sTrackElement) {
         self.ytElem.style.display = 'none';
     };
 
+    this.initTwitchPlayer = function() {
+        this.twitchPlayer = new Twitch.Player(Cons.DOM_TWITCH_CONTAINER, {
+            width: '100%',
+            height: '100%',
+            controls: false,
+            autoplay: false
+        });
+
+        this.twitchElem = document.getElementById(Cons.DOM_TWITCH_CONTAINER);
+        this.twitchElem.style.display = 'none';
+
+        this.twitchPlayer.addEventListener(Twitch.Player.READY, self.callTwitchPlayerCallbacks)
+        this.twitchPlayer.addEventListener(Twitch.Player.PAUSE, function() {
+            self.onTwitchPlayerStateChange(Twitch.Player.PAUSE);
+        });
+        this.twitchPlayer.addEventListener(Twitch.Player.PLAY, function() {
+            self.onTwitchPlayerStateChange(Twitch.Player.PLAY);
+        });
+        this.twitchPlayer.addEventListener(Twitch.Player.ENDED, function() {
+            self.onTwitchPlayerStateChange(Twitch.Player.ENDED);
+        });
+        this.twitchPlayer.addEventListener(Twitch.Player.ONLINE, function() {
+            self.onTwitchPlayerStateChange(Twitch.Player.ONLINE);
+        });
+        this.twitchPlayer.addEventListener(Twitch.Player.OFFLINE, function() {
+            self.onTwitchPlayerStateChange(Twitch.Player.OFFLINE);
+        });
+    };
+
     this.init = function(location, videoElement) {
         this.video.style.display = 'none';
         this.video.crossorigin = "anonymous";
@@ -2650,6 +2842,10 @@ function Video(videoElement, sTrackElement) {
             self.video.textTracks[0].mode = "showing";
             self.emit('subtitlesloaded');
         });
+
+        // we do not init the youtube player as that requires a global event
+        // that is caught before the initialization of this module
+        this.initTwitchPlayer();
     };
 
     // multi-source safe. Only handles local video streams.
@@ -2662,6 +2858,13 @@ function Video(videoElement, sTrackElement) {
             return false;
         }
         return self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE;
+    };
+
+    this.isStreamKindTwitch = function() {
+        if(!self.loadedData) {
+            return false;
+        }
+        return self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH;
     };
 
     this.load = function(data) {
@@ -2677,6 +2880,7 @@ function Video(videoElement, sTrackElement) {
         self.videoStreamKind = data.extra.stream.kind;
         if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.hidePlayer();
+            self.hideTwitchPlayer();
             self.showYtPlayer();
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.stream.url));
             self.pause();
@@ -2688,10 +2892,21 @@ function Video(videoElement, sTrackElement) {
 
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
+        } else if (data.extra.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.hidePlayer();
+            self.hideYtPlayer();
+            self.showTwitchPlayer();
+            self.loadTwitchVideo(twitchVideoIdFromUrl(data.extra.stream.url));
+            self.pause();
+            self.seekTwitchVideo(0);
+
+            self.setYtVideoVolume(self.videoVolume);
+            return;
         }
 
         self.pause();
         self.hideYtPlayer();
+        self.hideTwitchPlayer();
         self.showPlayer();
 
         try {
@@ -2717,6 +2932,9 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             this.playYtVideo();
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            this.playTwitchVideo();
             return;
         }
 
@@ -2766,6 +2984,9 @@ function Video(videoElement, sTrackElement) {
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.pauseYtVideo();
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.pauseTwitchVideo();
+            return;
         }
 
         // var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
@@ -2793,6 +3014,10 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.seekYtVideo(time);
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.seekTwitchVideo(time);
+            return;
         }
 
         this.video.currentTime = time;
@@ -2806,6 +3031,14 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return self.ytVideoCurrentTime;
+        }
+
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            if (!self.twitchPlayerReady || !self.twitchPlayer) {
+                return 0;
+            }
+
+            return self.twitchPlayer.getCurrentTime();
         }
 
         return this.video.currentTime;
@@ -2861,6 +3094,9 @@ function Video(videoElement, sTrackElement) {
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.setTwitchVideoVolume(self.videoVolume);
+            return;
         }
 
         self.video.volume = self.videoVolume;
@@ -2888,6 +3124,9 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.setTwitchVideoVolume(self.videoVolume);
             return;
         }
 
@@ -2918,6 +3157,9 @@ function Video(videoElement, sTrackElement) {
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.setTwitchVideoVolume(self.videoVolume);
+            return;
         }
 
         if (self.video.muted) {
@@ -2931,6 +3173,9 @@ function Video(videoElement, sTrackElement) {
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.muteYtVideoVolume();
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.muteTwitchVideoVolume();
+            return;
         }
 
         self.video.muted = true;
@@ -2939,6 +3184,9 @@ function Video(videoElement, sTrackElement) {
     this.unmute = function() {
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.unmuteYtVideoVolume();
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            self.unmuteTwitchVideoVolume();
             return;
         }
 
@@ -2953,6 +3201,12 @@ function Video(videoElement, sTrackElement) {
 
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             return this.ytVideoInfo ? this.ytVideoInfo.duration : 0;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
+            if (!self.twitchPlayerReady || !self.twitchPlayer) {
+                return 0;
+            }
+
+            return self.twitchPlayer.getDuration();
         }
 
         return this.duration;
@@ -2978,6 +3232,15 @@ function youtubeVideoIdFromUrl(url) {
         return segs.length ? segs[0] : url;
     }
     return url.split("watch?v=")[1].split("&")[0]
+}
+
+function twitchVideoIdFromUrl(url) {
+    var segs = url.split("/videos/");
+    if (segs.length >= 2) {
+        return 'v' + segs[1];
+    }
+
+    return url
 }
 
 function ytDurationToSeconds(ytDuration) {

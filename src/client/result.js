@@ -1,6 +1,6 @@
 var Cons = require('./constants.js');
 
-function Result(name, kind, url, thumb) {
+function Result(name, kind, url, thumb, description) {
     var self = this;
     var nameTruncated = false;
 
@@ -17,6 +17,7 @@ function Result(name, kind, url, thumb) {
     this.kind = kind || Cons.STREAM_KIND_LOCAL;
     this.url = url;
     this.thumbImgUrl = thumb;
+    this.description = description;
 
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
@@ -49,11 +50,10 @@ function Result(name, kind, url, thumb) {
 
     this.info = document.createElement("div");
     this.info.className = "controls-container-panel-result-info";
-    this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.url + "</span>";
+    this.info.innerHTML = "<span>" + this.name + "<br /><br />" + this.description + "</span>";
     if (nameTruncated) {
         this.info.title = name;
     }
-
 
     // build sub-tree
     this.container.appendChild(this.thumb);
@@ -82,6 +82,10 @@ function Result(name, kind, url, thumb) {
     
     this.getKind = function() {
         return this.kind;  
+    };
+
+    this.getDescription = function() {
+        return this.description;
     };
 
     this.appendTo = function(elem) {
@@ -170,6 +174,8 @@ module.exports = Result;
 function addThumbSpanClass(span, kind) {
     if (kind === Cons.STREAM_KIND_YOUTUBE) {
         span.className = "fa fa-youtube";
+    } else if (kind === Cons.STREAM_KIND_TWITCH) {
+        span.className = "fa fa-twitch";
     } else {
         span.className = "fa fa-film";
     }

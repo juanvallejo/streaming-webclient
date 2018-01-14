@@ -334,12 +334,6 @@ function App(window, document) {
         data = parseSockData(data);
         self.video.load(data);
 
-        if (data.extra.stream.kind !== Cons.STREAM_KIND_YOUTUBE
-            && data.extra.stream.kind !== Cons.STREAM_KIND_LOCAL) {
-            self.showOutput("Server asked to load invalid stream type", '"' + data.extra.stream.kind + '"')
-            return
-        }
-
         self.socket.send("request_streamsync");
         self.socket.send("request_queuesync");
 
@@ -406,7 +400,7 @@ function App(window, document) {
             if (data.extra.stream.duration) {
                 self.getVideo().ytVideoInfo.duration = data.extra.stream.duration;
             }
-        } else {
+        } else if (data.extra.stream.kind === Cons.STREAM_KIND_LOCAL) {
             if (data.extra.playback.isPlaying && self.video.sourceFileError) {
                 self.showOutput('The stream could not be loaded.');
                 return;
@@ -574,13 +568,17 @@ function App(window, document) {
     });
 
     window.addEventListener("message", function(e) {
+        if (typeof e.data !== "string") {
+            return;
+        }
+
         try {
             var data = JSON.parse(e.data);
             if (data.event === "infoDelivery" && data.info) {
                 self.video.ytVideoCurrentTime = data.info.currentTime;
             }
         } catch (err) {
-            console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", err);
+            console.log("ERR IFRAME-MESSAGE unable to parse event data as json:", e.data, err);
         }
     });
 
