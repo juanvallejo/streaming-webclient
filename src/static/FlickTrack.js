@@ -950,11 +950,16 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             })(item, url));
 
-            item.onThumbClick((function(item, videoId) {
+            item.onThumbClick((function(item, videoId, kind) {
                 return function() {
-                    self.showVideoPreview(videoId);
+                    if (kind === Cons.STREAM_KIND_YOUTUBE) {
+                        self.showVideoPreview(videoId);
+                        return;
+                    }
+
+                    item.clickInfo();
                 }
-            })(item, videoId));
+            })(item, videoId, streamKind));
 
             if (isPlaylistItem) {
                 playlistItems.push(item);
@@ -3170,6 +3175,10 @@ function Video(videoElement, sTrackElement) {
     };
     
     this.mute = function() {
+        if (!self.loadedData) {
+            return;
+        }
+
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.muteYtVideoVolume();
             return;
@@ -3182,6 +3191,10 @@ function Video(videoElement, sTrackElement) {
     };
     
     this.unmute = function() {
+        if (!self.loadedData) {
+            return;
+        }
+
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.unmuteYtVideoVolume();
             return;

@@ -416,11 +416,16 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             })(item, url));
 
-            item.onThumbClick((function(item, videoId) {
+            item.onThumbClick((function(item, videoId, kind) {
                 return function() {
-                    self.showVideoPreview(videoId);
+                    if (kind === Cons.STREAM_KIND_YOUTUBE) {
+                        self.showVideoPreview(videoId);
+                        return;
+                    }
+
+                    item.clickInfo();
                 }
-            })(item, videoId));
+            })(item, videoId, streamKind));
 
             if (isPlaylistItem) {
                 playlistItems.push(item);

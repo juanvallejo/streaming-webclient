@@ -705,6 +705,10 @@ function Video(videoElement, sTrackElement) {
     };
     
     this.mute = function() {
+        if (!self.loadedData) {
+            return;
+        }
+
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.muteYtVideoVolume();
             return;
@@ -717,6 +721,10 @@ function Video(videoElement, sTrackElement) {
     };
     
     this.unmute = function() {
+        if (!self.loadedData) {
+            return;
+        }
+
         if (self.loadedData.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
             self.unmuteYtVideoVolume();
             return;
