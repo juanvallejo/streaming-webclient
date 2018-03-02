@@ -28,6 +28,7 @@ var Constants = {
 
 	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
 	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
+	TWITCH_ITEM_KIND_CLIP: 'twitch#clip',
 
 	// rbac client info
 	ROLE_KIND_ADMIN: 'admin'

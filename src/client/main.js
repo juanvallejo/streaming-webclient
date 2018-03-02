@@ -224,7 +224,12 @@ function App(window, document) {
         if (self.localStorage.lastSavedQueueId) {
             var lastQueueId = self.localStorage.lastSavedQueueId;
             delete self.localStorage.lastSavedQueueId;
-            self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
+
+            // TODO: fix this - should not have to guess when authorization
+            // has gone through. Make authz
+            setTimeout(function() {
+                self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
+            }, 1000);
         }
 
         if (self.video.savedTimer) {

@@ -433,9 +433,9 @@ function Video(videoElement, sTrackElement) {
             self.showTwitchPlayer();
             self.loadTwitchVideo(twitchVideoIdFromUrl(data.extra.stream.url));
             self.pause();
-            self.seekTwitchVideo(0);
 
-            self.setYtVideoVolume(self.videoVolume);
+            self.seekTwitchVideo(0);
+            self.setTwitchVideoVolume(self.videoVolume);
             return;
         }
 
@@ -780,7 +780,7 @@ function youtubeVideoIdFromUrl(url) {
 function twitchVideoIdFromUrl(url) {
     var segs = url.split("/videos/");
     if (segs.length >= 2) {
-        return 'v' + segs[1];
+        return 'v' + segs[1].split("?")[0];
     }
 
     return url

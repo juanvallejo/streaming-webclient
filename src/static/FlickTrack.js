@@ -525,6 +525,7 @@ var Constants = {
 
 	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
 	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
+	TWITCH_ITEM_KIND_CLIP: 'twitch#clip',
 
 	// rbac client info
 	ROLE_KIND_ADMIN: 'admin'
@@ -1077,7 +1078,18 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 }
             }
 
-            var item = new Result(name, kind, items[i].url, thumb, items[i].url);
+            if (duration) {
+                duration = secondsToHumanTime(duration);
+            }
+
+            var desc = items[i].url;
+            var urlPieces = items[i].url.split("?clip=");
+            if (kind === Cons.STREAM_KIND_TWITCH && urlPieces.length > 1) {
+                desc = urlPieces[1];
+                duration = "CLIP";
+            }
+
+            var item = new Result(name, kind, items[i].url, thumb, desc);
             item.appendTo(self.panelQueue);
             item.onClick((function(item, vidUrl) {
                 return function() {
@@ -1102,7 +1114,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             })(item, items[i].url));
 
             if (duration) {
-                item.showDuration(secondsToHumanTime(duration));
+                item.showDuration(duration);
             }
 
             // determine if item was previously active
@@ -1204,25 +1216,19 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         if (self.handleYoutubeUriQuery(query)) {
             return;
         }
-
         if (self.handleTwitchUriQuery(query)) {
             return;
         }
 
-        // default to youtube search
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/youtube/search/" + encodeYoutubeURIComponent(query));
-        xhr.send();
-        xhr.addEventListener("readystatechange", function() {
+        // treat query as search keywords and default to youtube search
+        RESTYoutubeCall("/api/youtube/search/" + encodeYoutubeURIComponent(query), function(data, error) {
             self.searchBarRequestInProgress = false;
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    self.updateSearchPanel(data.items || []);
-                } catch(e) {
-                    self.setSearchPanelMessage("Error fetching search results...");
-                }
+            if (error !== null) {
+                self.setSearchPanelMessage("Error fetching video results...")
+                return;
             }
+
+            self.updateSearchPanel(data.items || []);
         });
     };
 
@@ -1262,55 +1268,75 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             id = keys['v'];
         }
 
+        var endpoint = "/api/youtube/search/" + encodeYoutubeURIComponent(query);
         if (keys['list']) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/api/youtube/list/" + keys['list']);
-            xhr.send();
-            xhr.addEventListener("readystatechange", function() {
-                self.searchBarRequestInProgress = false;
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        self.updateSearchPanel(data.items || []);
-                    } catch(e) {
-                        self.setSearchPanelMessage("Error fetching playlist results...");
-                    }
-                }
-            });
-
-            return true;
+            endpoint = "/api/youtube/list/" + keys['list'];
         }
 
-        return false;
+        RESTYoutubeCall(endpoint, function(data, error) {
+            self.searchBarRequestInProgress = false;
+            if (error !== null) {
+                self.setSearchPanelMessage("Error fetching video results...");
+                return;
+            }
+
+            self.updateSearchPanel(data.items || []);
+        });
+
+        return true;
     };
 
     this.handleTwitchUriQuery = function(query) {
-        if (!query.match(/^http(s)?:\/\/(www\.)?twitch\.tv/gi)) {
+        if (!query.match(/^http(s)?:\/\/(www\.)?(clips\.)?twitch\.tv/gi)) {
             return false;
         }
 
-        var segs = query.split('/videos/');
-        if (segs.length < 2) {
-            return false;
+        var endpoint = "/api/twitch/stream/";
+        var id = "";
+
+        // handle clips
+        if (query.split("clips.twitch").length > 1) {
+            endpoint = "/api/twitch/clip/";
+
+            var segs = query.split("/");
+            id = segs[segs.length - 1];
+        } else {
+            var segs = query.split('/videos/');
+            if (segs.length < 2) {
+                return false;
+            }
+
+            id = segs[1];
         }
 
-        var id = segs[1];
         if (!id) {
             return false;
         }
 
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/twitch/stream/" + id);
+        xhr.open("GET", endpoint + id);
         xhr.send();
         xhr.addEventListener("readystatechange", function() {
             self.searchBarRequestInProgress = false;
             if (xhr.readyState === 4 && xhr.status === 200) {
                 try {
                     var data = JSON.parse(xhr.responseText);
+                    if (data.httpCode && data.httpCode === 500 && data.error) {
+                        var errMessage = data.error;
+                        if (errMessage.length) {
+                            errMessage[0] = errMessage[0].toUpperCase();
+                        }
+
+                        self.setSearchPanelMessage(errMessage);
+                        return;
+                    }
+
                     self.updateSearchPanel(data.items || []);
                 } catch(e) {
-                    self.setSearchPanelMessage("Error fetching playlist results...");
+                    self.setSearchPanelMessage("Error fetching video results...");
                 }
+            } else if (xhr.readyState === 4 && xhr.status === 500) {
+                self.setSearchPanelMessage("Error from server while fetching video results...<br />Try again later.");
             }
         });
 
@@ -1527,6 +1553,29 @@ function encodeYoutubeURIComponent(query) {
 
     query = query.split('&')[0];
     return encodeURIComponent(query);
+}
+
+function RESTYoutubeCall(endpoint, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", endpoint);
+    xhr.send();
+    xhr.addEventListener("readystatechange", function() {
+        if (xhr.readyState !== 4) {
+            return;
+        }
+
+        if (xhr.status !== 200) {
+            callback(null, "invalid http status code from server:", xhr.status);
+            return;
+        }
+
+        try {
+            var data = JSON.parse(xhr.responseText);
+            callback(data, null);
+        } catch(e) {
+            callback(null, e.toString());
+        }
+    });
 }
 
 Controls.prototype = new Emitter();
@@ -1759,7 +1808,12 @@ function App(window, document) {
         if (self.localStorage.lastSavedQueueId) {
             var lastQueueId = self.localStorage.lastSavedQueueId;
             delete self.localStorage.lastSavedQueueId;
-            self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
+
+            // TODO: fix this - should not have to guess when authorization
+            // has gone through. Make authz
+            setTimeout(function() {
+                self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
+            }, 1000);
         }
 
         if (self.video.savedTimer) {
@@ -2903,9 +2957,9 @@ function Video(videoElement, sTrackElement) {
             self.showTwitchPlayer();
             self.loadTwitchVideo(twitchVideoIdFromUrl(data.extra.stream.url));
             self.pause();
-            self.seekTwitchVideo(0);
 
-            self.setYtVideoVolume(self.videoVolume);
+            self.seekTwitchVideo(0);
+            self.setTwitchVideoVolume(self.videoVolume);
             return;
         }
 
@@ -3250,7 +3304,7 @@ function youtubeVideoIdFromUrl(url) {
 function twitchVideoIdFromUrl(url) {
     var segs = url.split("/videos/");
     if (segs.length >= 2) {
-        return 'v' + segs[1];
+        return 'v' + segs[1].split("?")[0];
     }
 
     return url
