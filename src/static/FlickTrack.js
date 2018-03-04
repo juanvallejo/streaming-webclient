@@ -227,6 +227,11 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 		}
 		return this.focused;
 	};
+	
+	this.init = function() {
+		// auto display user list
+		this.usersButton.click();
+	};
 
 	this.videoURLToEmbeddable = function(link) {
 		var videoId = link;
@@ -518,6 +523,7 @@ var Constants = {
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
 	STREAM_KIND_TWITCH: 'twitch',
+	STREAM_KIND_TWITCH_CLIP: 'twitch#clip',
 
 	// api results information
 	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
@@ -933,6 +939,11 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 description = items[i].channel.display_name + " - " + items[i].game;
             }
 
+            var urlPieces = items[i].url.split("?clip=");
+            if (items[i].kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
+                description = "Twitch clip - " + items[i].slug;
+            }
+
             var item = new Result(title, streamKind, url, thumb, description);
             item.hideDuration();
             item.appendTo(self.panelResults);
@@ -1084,9 +1095,8 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
             var desc = items[i].url;
             var urlPieces = items[i].url.split("?clip=");
-            if (kind === Cons.STREAM_KIND_TWITCH && urlPieces.length > 1) {
-                desc = urlPieces[1];
-                duration = "CLIP";
+            if (kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
+                desc = 'Twitch clip' + urlPieces[1];
             }
 
             var item = new Result(name, kind, items[i].url, thumb, desc);
@@ -1654,6 +1664,9 @@ function App(window, document) {
             return;
         }
 
+        // init chat
+        this.chat.init();
+
         this.out.innerHTML = '';
         // this.out.innerHTML = "Welcome.<br />Queue a video by using the <span class='text-hl-name'>panel to the left.</span>"
         // this.out.innerHTML += "<br />Press <span class='text-hl-name'>play</span> to begin room playback."
@@ -1870,8 +1883,6 @@ function App(window, document) {
                 self.chat.hideUserView();
                 return;
             }
-
-            $(self.chat.usersButton).click();
         }
 
         self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")
@@ -2967,9 +2978,17 @@ function Video(videoElement, sTrackElement) {
         self.hideYtPlayer();
         self.hideTwitchPlayer();
         self.showPlayer();
+        
+        var url = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
+
+        // default to using local player for other stream kinds.
+        // handle url sanitizing / parsing accordingly
+        if (data.extra.stream.kind === Cons.STREAM_KIND_TWITCH_CLIP) {
+            url = twitchClipVideoUrlFromUrl(data.extra.stream.url);
+        }
 
         try {
-            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
+            self.video.src = url;
             self.video.volume = self.videoVolume;
         } catch(e) {
             console.log("EXCEPT VIDEO LOAD", e);
@@ -3308,6 +3327,10 @@ function twitchVideoIdFromUrl(url) {
     }
 
     return url
+}
+
+function twitchClipVideoUrlFromUrl(url) {
+    return url.split("?")[0];
 }
 
 function ytDurationToSeconds(ytDuration) {

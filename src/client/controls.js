@@ -398,6 +398,11 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                 description = items[i].channel.display_name + " - " + items[i].game;
             }
 
+            var urlPieces = items[i].url.split("?clip=");
+            if (items[i].kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
+                description = "Twitch clip - " + items[i].slug;
+            }
+
             var item = new Result(title, streamKind, url, thumb, description);
             item.hideDuration();
             item.appendTo(self.panelResults);
@@ -549,9 +554,8 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
             var desc = items[i].url;
             var urlPieces = items[i].url.split("?clip=");
-            if (kind === Cons.STREAM_KIND_TWITCH && urlPieces.length > 1) {
-                desc = urlPieces[1];
-                duration = "CLIP";
+            if (kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
+                desc = 'Twitch clip - ' + urlPieces[1];
             }
 
             var item = new Result(name, kind, items[i].url, thumb, desc);

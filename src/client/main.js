@@ -70,6 +70,9 @@ function App(window, document) {
             return;
         }
 
+        // init chat
+        this.chat.init();
+
         this.out.innerHTML = '';
         // this.out.innerHTML = "Welcome.<br />Queue a video by using the <span class='text-hl-name'>panel to the left.</span>"
         // this.out.innerHTML += "<br />Press <span class='text-hl-name'>play</span> to begin room playback."
@@ -286,8 +289,6 @@ function App(window, document) {
                 self.chat.hideUserView();
                 return;
             }
-
-            $(self.chat.usersButton).click();
         }
 
         self.banner.showBanner("Your username has been updated to \"" + data.user + "\"")

@@ -443,9 +443,17 @@ function Video(videoElement, sTrackElement) {
         self.hideYtPlayer();
         self.hideTwitchPlayer();
         self.showPlayer();
+        
+        var url = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
+
+        // default to using local player for other stream kinds.
+        // handle url sanitizing / parsing accordingly
+        if (data.extra.stream.kind === Cons.STREAM_KIND_TWITCH_CLIP) {
+            url = twitchClipVideoUrlFromUrl(data.extra.stream.url);
+        }
 
         try {
-            self.video.src = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
+            self.video.src = url;
             self.video.volume = self.videoVolume;
         } catch(e) {
             console.log("EXCEPT VIDEO LOAD", e);
@@ -784,6 +792,10 @@ function twitchVideoIdFromUrl(url) {
     }
 
     return url
+}
+
+function twitchClipVideoUrlFromUrl(url) {
+    return url.split("?")[0];
 }
 
 function ytDurationToSeconds(ytDuration) {

@@ -185,6 +185,11 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 		}
 		return this.focused;
 	};
+	
+	this.init = function() {
+		// auto display user list
+		this.usersButton.click();
+	};
 
 	this.videoURLToEmbeddable = function(link) {
 		var videoId = link;
