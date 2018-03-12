@@ -474,7 +474,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         self.stackState = items;
 
         // update stack notification counter
-        if (items.length > 1) {
+        if (items.length > 0) {
             var count = items.length;
             if (count > 99) {
                 count = '99+';
@@ -487,6 +487,19 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
         if (self.showQueueOrStack === SHOW_STACK) {
             self.showStackItems();
+        }
+    };
+
+    this.restoreStack = function(items) {
+        for (var i = 0; i < items.length; i++) {
+            console.log("URL = ", items[i]);
+
+            var url = items[i].url;
+            if (!url || !url.length) {
+                continue
+            }
+
+            self.emit("chatcommand", ["/queue add " + url]);
         }
     };
 

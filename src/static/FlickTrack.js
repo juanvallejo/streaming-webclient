@@ -1015,7 +1015,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         self.stackState = items;
 
         // update stack notification counter
-        if (items.length > 1) {
+        if (items.length > 0) {
             var count = items.length;
             if (count > 99) {
                 count = '99+';
@@ -1028,6 +1028,19 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
         if (self.showQueueOrStack === SHOW_STACK) {
             self.showStackItems();
+        }
+    };
+
+    this.restoreStack = function(items) {
+        for (var i = 0; i < items.length; i++) {
+            console.log("URL = ", items[i]);
+
+            var url = items[i].url;
+            if (!url || !url.length) {
+                continue
+            }
+
+            self.emit("chatcommand", ["/queue add " + url]);
         }
     };
 
@@ -1096,7 +1109,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             var desc = items[i].url;
             var urlPieces = items[i].url.split("?clip=");
             if (kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
-                desc = 'Twitch clip' + urlPieces[1];
+                desc = 'Twitch clip - ' + urlPieces[1];
             }
 
             var item = new Result(name, kind, items[i].url, thumb, desc);
@@ -1651,6 +1664,8 @@ function App(window, document) {
     this.initVideo = false;
     this.connectionLost = false;
 
+    this.isQueueRestored = false;
+
     // initialize the client application
     // and its sub-components
     this.init = function() {
@@ -1817,18 +1832,6 @@ function App(window, document) {
             }, 1000);
         }
 
-        // restore user queue from last connection id
-        if (self.localStorage.lastSavedQueueId) {
-            var lastQueueId = self.localStorage.lastSavedQueueId;
-            delete self.localStorage.lastSavedQueueId;
-
-            // TODO: fix this - should not have to guess when authorization
-            // has gone through. Make authz
-            setTimeout(function() {
-                self.chat.sendText(self.socket, "system", "/queue migrate " + lastQueueId);
-            }, 1000);
-        }
-
         if (self.video.savedTimer) {
             // TODO: it would be ideal to have the clickable overlay
             // at the begining of a stopped stream resume using this
@@ -1852,10 +1855,6 @@ function App(window, document) {
         self.controls.pause();
         self.video.canStartStream = false;
         self.connectionLost = true;
-
-        if (self.localStorage.lastSavedQueueId) {
-            delete self.localStorage.lastSavedQueueId;
-        }
 
         // TODO: add reconnection logic
         self.showOutput('The stream will resume momentarily.<br />Please stand by.');
@@ -1942,30 +1941,9 @@ function App(window, document) {
         }
     });
 
-    this.socket.on('httprequest', function(data) {
+    this.socket.on('authorization', function(data) {
         data = parseSockData(data);
-        if (data.error) {
-            self.chat.addMessage({
-                system: true,
-                user: 'system',
-                message: "error: " + data.error
-            });
-            return;
-        }
-
-        var endpoint = data.extra.endpoint;
-        var method = data.extra.method || 'GET';
-
-        if (!endpoint) {
-            self.chat.addMessage({
-                system: true,
-                user: 'system',
-                message: 'error: the server asked the client to initiate a request against an empty or invalid endpoint.'
-            });
-            return;
-        }
-
-        request(method, endpoint, function(response) {
+        handleRemoteRequest(data, function(response) {
             var message = response.message;
             if (response.error) {
                 message = response.error;
@@ -1976,7 +1954,43 @@ function App(window, document) {
                 });
                 return;
             }
+
+            // handle events that should happen only after we have
+            // been authorized as a normal user by the server
+
+            if (self.isQueueRestored) {
+                return;
+            }
+
+            self.isQueueRestored = true;
+
+            // restore a user's queue
+            if (self.localStorage.lastSavedStackState && self.localStorage.lastSavedStackState.length) {
+                try {
+                    var items = JSON.parse(self.localStorage.lastSavedStackState);
+                    if (items.length) {
+                        self.chat.addMessage({
+                            system: true,
+                            user: 'system',
+                            message: "attempting to restore your queue items..."
+                        });
+                    }
+
+                    self.controls.restoreStack(items);
+                } catch (e) {
+                    self.chat.addMessage({
+                        system: true,
+                        user: 'system',
+                        message: "unable to deserialize saved queue state - your previous queue items will not be restored"
+                    });
+                }
+            }
         });
+    });
+
+    this.socket.on('httprequest', function(data) {
+        data = parseSockData(data);
+        handleRemoteRequest(data);
     });
 
     this.socket.on('queuesync', function(data) {
@@ -1984,13 +1998,12 @@ function App(window, document) {
     });
 
     this.socket.on('stacksync', function(data) {
-        // if received user-queue items and a user id, store in
-        // localstorage under current id, else clear existing save
-        if (data.id && data.extra.items && data.extra.items.length) {
-            window.localStorage.lastSavedQueueId = data.id;
-        } else if (window.localStorage.lastSavedQueueId){
-            delete window.localStorage.lastSavedQueueId;
+        // save the current queue state locally.
+        // this allows us to restore it at a later session.
+        if (data.extra.items) {
+            window.localStorage.lastSavedStackState = JSON.stringify(data.extra.items || []);
         }
+
         self.controls.updateStack(data.extra.items || [])
     });
     
@@ -2122,6 +2135,7 @@ function App(window, document) {
         data = parseSockData(data);
         self.banner.showBanner('client <span class="text-hl-name">' + (data.user || data.id) + '</span> has left the stream.');
         self.socket.send('request_userlist');
+        self.socket.send('request_queuesync');
     });
 
     this.socket.on('system_ping', function() {
@@ -2227,6 +2241,44 @@ function parseSockData(b64) {
         return b64;
     }
     return JSON.parse(atob(b64));
+}
+
+function handleRemoteRequest(data, callback) {
+    if (data.error) {
+        self.chat.addMessage({
+            system: true,
+            user: 'system',
+            message: "error: " + data.error
+        });
+        return;
+    }
+
+    var endpoint = data.extra.endpoint;
+    var method = data.extra.method || 'GET';
+
+    if (!endpoint) {
+        self.chat.addMessage({
+            system: true,
+            user: 'system',
+            message: 'error: the server asked the client to initiate a request against an empty or invalid endpoint.'
+        });
+        return;
+    }
+
+    callback = callback || function(response) {
+        var message = response.message;
+        if (response.error) {
+            message = response.error;
+            self.chat.addMessage({
+                system: true,
+                user: 'system',
+                message: message
+            });
+            return;
+        }
+    };
+
+    request(method, endpoint, callback);
 }
 
 window.App = App;
