@@ -91,7 +91,7 @@ function App(window, document) {
         this.video.appendTo(document.body);
 
         this.video.on('error', function(err) {
-            if (err.target.error.code == Cons.ERR_CODE_VID_NOTFOUND) {
+            if (err.target.error.code === Cons.ERR_CODE_VID_NOTFOUND) {
                 self.showOutput('The video file <span class="text-hl-name">' + self.video.getVideo().src.split(Cons.STREAM_URL_PREFIX)[1] + '</span> could not be loaded.');
             } else {
                 self.showOutput('Unexpected error occurred while receiving video data.<br />' + err.target.error);

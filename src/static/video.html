@@ -624,6 +624,17 @@
 	z-index: 3;
 }
 
+
+#soundcloud-video.api-player {
+    background: black url(/src/static/sc_bg.jpg) no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+
+    display: none;
+}
+
 .chat-container-view-message-image {
 	max-width: 100%;
 }
@@ -817,7 +828,7 @@ video, .api-player {
             <div class="span-wrapper">
                 <span class="fa fa-minus" title="minimize chat window"></span>
             </div>
-        </div> <!-- ////-- -->
+        </div>
     </div>
     <div id="chat-container-overlay">
         <div class="full-size">
@@ -828,6 +839,8 @@ video, .api-player {
 <div id="video-overlay" class="overlay"></div>
 <div id="yt-video" class="api-player"></div>
 <div id="twitch-video" class="api-player"></div>
+<div id="soundcloud-video" class="api-player"></div>
+<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>
 <script src="http://player.twitch.tv/js/embed/v1.js"></script>
 <script>
 var app = new App(window, document);

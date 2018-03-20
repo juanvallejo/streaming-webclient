@@ -701,6 +701,9 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         if (self.handleTwitchUriQuery(query)) {
             return;
         }
+        if (self.handleSoundCloudUriQuery(query)) {
+            return;
+        }
 
         // treat query as search keywords and default to youtube search
         RESTYoutubeCall("/api/youtube/search/" + encodeYoutubeURIComponent(query), function(data, error) {
@@ -813,6 +816,47 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
                         return;
                     }
 
+                    self.updateSearchPanel(data.items || []);
+                } catch(e) {
+                    self.setSearchPanelMessage("Error fetching video results...");
+                }
+            } else if (xhr.readyState === 4 && xhr.status === 500) {
+                self.setSearchPanelMessage("Error from server while fetching video results...<br />Try again later.");
+            }
+        });
+
+        return true;
+    };
+
+    this.handleSoundCloudUriQuery = function(query) {
+        if (!query.match(/^http(s)?:\/\/(www\.)?soundcloud\.com/gi)) {
+            return false;
+        }
+
+        var endpoint = "/api/soundcloud/search/";
+
+        // handle clips
+        var segs = query.split("/");
+        var id = segs[segs.length-1];
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", endpoint + id);
+        xhr.send();
+        xhr.addEventListener("readystatechange", function() {
+            self.searchBarRequestInProgress = false;
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.httpCode && data.httpCode === 500 && data.error) {
+                        var errMessage = data.error;
+                        if (errMessage.length) {
+                            errMessage[0] = errMessage[0].toUpperCase();
+                        }
+
+                        self.setSearchPanelMessage(errMessage);
+                        return;
+                    }
+                    
                     self.updateSearchPanel(data.items || []);
                 } catch(e) {
                     self.setSearchPanelMessage("Error fetching video results...");

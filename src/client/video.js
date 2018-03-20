@@ -35,6 +35,10 @@ function Video(videoElement, sTrackElement) {
     this.twitchReadyCallbacks = [];
     this.twitchPlayerReady = false;
 
+    this.soundcloudElem = null;
+    this.soundCloudPlayer = null;
+    this.soundCloudPlayerReady = false;
+    this.scReadyCallbacks = [];
 
     this.isPlaying = false;
 
@@ -94,6 +98,7 @@ function Video(videoElement, sTrackElement) {
     };
 
     this.showPlayer = function() {
+        self.hideAllPlayers();
         this.video.style.display = 'block';
     };
 
@@ -111,14 +116,32 @@ function Video(videoElement, sTrackElement) {
 
     this.showYtPlayer = function() {
         self.onYtPlayerReady(function() {
+            self.hideAllPlayers();
             self.ytElem.style.display = 'block';
         });
     };
 
     this.showTwitchPlayer = function() {
         self.onTwitchPlayerReady(function() {
+            self.hideAllPlayers();
             self.twitchElem.style.display = 'block';
         });
+    };
+
+    this.showSoundCloudPlayer = function () {
+        self.hideAllPlayers();
+        self.soundcloudElem.style.display = 'block';
+    };
+
+    this.hideSoundCloudPlayer = function () {
+        self.soundcloudElem.style.display = 'none';
+    };
+
+    this.hideAllPlayers = function() {
+        self.hidePlayer();
+        self.hideYtPlayer();
+        self.hideTwitchPlayer();
+        self.hideSoundCloudPlayer();
     };
 
     // note: uses youtube iframe-api context.
@@ -163,6 +186,15 @@ function Video(videoElement, sTrackElement) {
         this.twitchReadyCallbacks.push(callback);
     };
 
+    this.onSoundCloudPlayerReady = function(callback) {
+        if (this.soundCloudPlayerReady && this.soundCloudPlayer) {
+            callback.call(self, self.soundCloudPlayer);
+            return;
+        }
+
+        this.scReadyCallbacks.push(callback);
+    };
+
     this.onYtPlayerStateChange = function(evt) {
         // catch video player state changes
         // and stop player if playing, but
@@ -188,6 +220,22 @@ function Video(videoElement, sTrackElement) {
         if (evt === Twitch.Player.ENDED) {
             // TODO
         }
+    };
+
+    this.loadSoundCloudVideo = function(videoId) {
+        self.soundCloudPlayer = null;
+
+        SC.stream(videoId).then(function(player) {
+            player.setVolume(self.videoVolume);
+
+            self.soundCloudPlayerReady = true;
+            self.soundCloudPlayer = player;
+
+            while (self.scReadyCallbacks.length) {
+                var fn = self.scReadyCallbacks.shift();
+                fn(player);
+            }
+        });
     };
 
     this.loadYtVideo = function(videoId) {
@@ -227,6 +275,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.seekScVideo = function(time) {
+        self.onSoundCloudPlayerReady(function(player) {
+            player.seek(time * 1000);
+        });
+    };
+
     this.muteYtVideoVolume = function() {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -240,6 +294,12 @@ function Video(videoElement, sTrackElement) {
     this.muteTwitchVideoVolume = function() {
         self.onTwitchPlayerReady(function(player) {
             player.setMuted(true);
+        });
+    };
+
+    this.muteScVideoVolume = function() {
+        self.onSoundCloudPlayerReady(function(player) {
+            player.setVolume(0);
         });
     };
 
@@ -259,6 +319,12 @@ function Video(videoElement, sTrackElement) {
         });
     };
 
+    this.unmuteScVideoVolume = function() {
+        self.onSoundCloudPlayerReady(function(player) {
+            player.setVolume(self.videoVolume);
+        });
+    };
+
     this.setYtVideoVolume = function(vol) {
         self.onYtPlayerReady(function(frame) {
             frame.contentWindow.postMessage(JSON.stringify({
@@ -271,6 +337,12 @@ function Video(videoElement, sTrackElement) {
 
     this.setTwitchVideoVolume = function(vol) {
         self.onTwitchPlayerReady(function(player) {
+            player.setVolume(vol);
+        });
+    };
+
+    this.setScVideoVolume = function(vol) {
+        self.onSoundCloudPlayerReady(function(player) {
             player.setVolume(vol);
         });
     };
@@ -288,6 +360,18 @@ function Video(videoElement, sTrackElement) {
     this.playTwitchVideo = function() {
         self.onTwitchPlayerReady(function(player) {
             player.play();
+        });
+    };
+
+    this.playScVideo = function() {
+        self.onSoundCloudPlayerReady(function(player) {
+           player.play();
+        });
+    };
+
+    this.pauseScVideo = function() {
+        self.onSoundCloudPlayerReady(function(player) {
+            player.pause();
         });
     };
 
@@ -331,6 +415,15 @@ function Video(videoElement, sTrackElement) {
         });
         this.ytElem = this.ytPlayer.getIframe();
         self.ytElem.style.display = 'none';
+    };
+
+    this.initSoundCloudPlayer = function() {
+        SC.initialize({
+            client_id: '8826c78b07abd42a11bd7ba5015b8262'
+        });
+
+        this.soundcloudElem = document.getElementById(Cons.DOM_SC_CONTAINER);
+        this.soundcloudElem.style.display = 'none';
     };
 
     this.initTwitchPlayer = function() {
@@ -381,6 +474,7 @@ function Video(videoElement, sTrackElement) {
         // we do not init the youtube player as that requires a global event
         // that is caught before the initialization of this module
         this.initTwitchPlayer();
+        this.initSoundCloudPlayer();
     };
 
     // multi-source safe. Only handles local video streams.
@@ -414,8 +508,6 @@ function Video(videoElement, sTrackElement) {
         self.loadedData = data.extra;
         self.videoStreamKind = data.extra.stream.kind;
         if (data.extra.stream.kind === Cons.STREAM_KIND_YOUTUBE) {
-            self.hidePlayer();
-            self.hideTwitchPlayer();
             self.showYtPlayer();
             self.loadYtVideo(youtubeVideoIdFromUrl(data.extra.stream.url));
             self.pause();
@@ -428,8 +520,6 @@ function Video(videoElement, sTrackElement) {
             self.setYtVideoVolume(self.videoVolume * volMod);
             return;
         } else if (data.extra.stream.kind === Cons.STREAM_KIND_TWITCH) {
-            self.hidePlayer();
-            self.hideYtPlayer();
             self.showTwitchPlayer();
             self.loadTwitchVideo(twitchVideoIdFromUrl(data.extra.stream.url));
             self.pause();
@@ -437,11 +527,17 @@ function Video(videoElement, sTrackElement) {
             self.seekTwitchVideo(0);
             self.setTwitchVideoVolume(self.videoVolume);
             return;
+        } else if (data.extra.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.showSoundCloudPlayer();
+            self.loadSoundCloudVideo(soundCloudVideoIdFromUrl(data.extra.stream.url));
+            self.pause();
+
+            self.seekScVideo(0);
+            self.setScVideoVolume(self.videoVolume);
+            return;
         }
 
         self.pause();
-        self.hideYtPlayer();
-        self.hideTwitchPlayer();
         self.showPlayer();
         
         var url = Cons.STREAM_URL_PREFIX + data.extra.stream.url;
@@ -478,6 +574,9 @@ function Video(videoElement, sTrackElement) {
             return;
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             this.playTwitchVideo();
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            this.playScVideo();
             return;
         }
 
@@ -530,6 +629,9 @@ function Video(videoElement, sTrackElement) {
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.pauseTwitchVideo();
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.pauseScVideo();
+            return;
         }
 
         // var isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
@@ -561,6 +663,9 @@ function Video(videoElement, sTrackElement) {
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.seekTwitchVideo(time);
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.seekScVideo(time);
+            return;
         }
 
         this.video.currentTime = time;
@@ -582,6 +687,14 @@ function Video(videoElement, sTrackElement) {
             }
 
             return self.twitchPlayer.getCurrentTime();
+        }
+
+        if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            if (!self.soundCloudPlayerReady || !self.soundCloudPlayer) {
+                return 0;
+            }
+
+            return self.soundCloudPlayer.currentTime() / 1000;
         }
 
         return this.video.currentTime;
@@ -640,6 +753,9 @@ function Video(videoElement, sTrackElement) {
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.setTwitchVideoVolume(self.videoVolume);
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.setScVideoVolume(self.videoVolume);
+            return;
         }
 
         self.video.volume = self.videoVolume;
@@ -670,6 +786,9 @@ function Video(videoElement, sTrackElement) {
             return;
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.setTwitchVideoVolume(self.videoVolume);
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.setScVideoVolume(self.videoVolume);
             return;
         }
 
@@ -703,6 +822,9 @@ function Video(videoElement, sTrackElement) {
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.setTwitchVideoVolume(self.videoVolume);
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.setScVideoVolume(self.videoVolume);
+            return;
         }
 
         if (self.video.muted) {
@@ -723,6 +845,9 @@ function Video(videoElement, sTrackElement) {
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.muteTwitchVideoVolume();
             return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.muteScVideoVolume();
+            return;
         }
 
         self.video.muted = true;
@@ -738,6 +863,9 @@ function Video(videoElement, sTrackElement) {
             return;
         } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_TWITCH) {
             self.unmuteTwitchVideoVolume();
+            return;
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            self.unmuteScVideoVolume();
             return;
         }
 
@@ -758,6 +886,12 @@ function Video(videoElement, sTrackElement) {
             }
 
             return self.twitchPlayer.getDuration();
+        } else if (self.loadedData.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+            if (!self.soundCloudPlayerReady || !self.soundCloudPlayer) {
+                return 0;
+            }
+
+            return self.soundCloudPlayer.getDuration();
         }
 
         return this.duration;
@@ -796,6 +930,11 @@ function twitchVideoIdFromUrl(url) {
 
 function twitchClipVideoUrlFromUrl(url) {
     return url.split("?")[0];
+}
+
+function soundCloudVideoIdFromUrl(url) {
+    var segs = url.split("/");
+    return "/tracks/" + segs[segs.length - 1];
 }
 
 function ytDurationToSeconds(ytDuration) {

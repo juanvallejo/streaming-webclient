@@ -16,10 +16,12 @@ var Constants = {
 	// dom information
 	DOM_YT_CONTAINER: 'yt-video',
 	DOM_TWITCH_CONTAINER: 'twitch-video',
+	DOM_SC_CONTAINER: 'soundcloud-video',
 
 	// server stream api information
 	STREAM_KIND_YOUTUBE: 'youtube',
 	STREAM_KIND_LOCAL: 'movie',
+    STREAM_KIND_SOUNDCLOUD: 'soundcloud',
 	STREAM_KIND_TWITCH: 'twitch',
 	STREAM_KIND_TWITCH_CLIP: 'twitch#clip',
 

@@ -176,6 +176,8 @@ function addThumbSpanClass(span, kind) {
         span.className = "fa fa-youtube";
     } else if (kind === Cons.STREAM_KIND_TWITCH) {
         span.className = "fa fa-twitch";
+    } else if (kind === Cons.STREAM_KIND_SOUNDCLOUD) {
+        span.className = "fa fa-soundcloud";
     } else {
         span.className = "fa fa-film";
     }
