@@ -492,7 +492,6 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
     this.restoreStack = function(items) {
         for (var i = 0; i < items.length; i++) {
-            console.log("URL = ", items[i]);
 
             var url = items[i].url;
             if (!url || !url.length) {
@@ -833,14 +832,10 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             return false;
         }
 
-        var endpoint = "/api/soundcloud/search/";
-
-        // handle clips
-        var segs = query.split("/");
-        var id = segs[segs.length-1];
+        var endpoint = "/api/soundcloud/stream/";
 
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", endpoint + id);
+        xhr.open("GET", endpoint + query);
         xhr.send();
         xhr.addEventListener("readystatechange", function() {
             self.searchBarRequestInProgress = false;

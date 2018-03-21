@@ -224,6 +224,7 @@ function Video(videoElement, sTrackElement) {
 
     this.loadSoundCloudVideo = function(videoId) {
         self.soundCloudPlayer = null;
+        self.soundCloudPlayerReady = false;
 
         SC.stream(videoId).then(function(player) {
             player.setVolume(self.videoVolume);
@@ -529,7 +530,13 @@ function Video(videoElement, sTrackElement) {
             return;
         } else if (data.extra.stream.kind === Cons.STREAM_KIND_SOUNDCLOUD) {
             self.showSoundCloudPlayer();
-            self.loadSoundCloudVideo(soundCloudVideoIdFromUrl(data.extra.stream.url));
+
+            self.soundCloudPlayer = null;
+            self.soundCloudPlayerReady = false;
+            soundCloudVideoIdFromUrl(data.extra.stream.url, function(err, track) {
+                self.loadSoundCloudVideo(track);
+            });
+
             self.pause();
 
             self.seekScVideo(0);
@@ -932,9 +939,33 @@ function twitchClipVideoUrlFromUrl(url) {
     return url.split("?")[0];
 }
 
-function soundCloudVideoIdFromUrl(url) {
-    var segs = url.split("/");
-    return "/tracks/" + segs[segs.length - 1];
+function soundCloudVideoIdFromUrl(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/api/soundcloud/stream/"+url);
+    xhr.send();
+    xhr.addEventListener("readystatechange", function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                data = data.items[0];
+                if (data.httpCode && data.httpCode === 500 && data.error) {
+                    callback(data.error);
+                    return;
+                }
+
+                if (!data) {
+                    callback("unable to fetch stream information - no items found");
+                    return;
+                }
+
+                callback(null, "/tracks/" + data.id);
+            } catch(e) {
+                callback("Error fetching video results...");
+            }
+        } else if (xhr.readyState === 4 && xhr.status === 500) {
+            callback("Error from server while fetching video results...");
+        }
+    });
 }
 
 function ytDurationToSeconds(ytDuration) {
