@@ -530,6 +530,7 @@ var Constants = {
 	// api results information
 	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
 	TWITCH_ITEM_KIND_PLAYLIST_ITEM: 'twitch#playlistItem',
+	SOUNDCLOUD_ITEM_KIND_PLAYLIST_ITEM: 'soundcloud#playlistItem',
 
 	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
 	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
@@ -898,7 +899,13 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         var playlistItems = [];
 
         // append queue-all button if displaying playlist
-        var isPlaylist = items[0].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
+        var isPlaylist = false;
+        switch(items[0].kind) {
+        case Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM:
+        case Cons.SOUNDCLOUD_ITEM_KIND_PLAYLIST_ITEM:
+            isPlaylist = true;
+        }
+
         if (isPlaylist) {
             var queueall = document.createElement('div');
             queueall.className = 'controls-container-panel-queueall';
@@ -923,9 +930,15 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         }
 
         for(var i = 0; i < items.length; i++) {
-            var isPlaylistItem = items[i].kind === Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM;
             var isTwitchVideo = items[i].kind === Cons.TWITCH_ITEM_KIND_ITEM;
+            var isPlaylistItem = false;
 
+            switch(items[i].kind) {
+            case Cons.YOUTUBE_ITEM_KIND_PLAYLIST_ITEM:
+            case Cons.SOUNDCLOUD_ITEM_KIND_PLAYLIST_ITEM:
+                isPlaylistItem = true;
+            }
+            
             var videoId = items[i].id;
             var thumb = items[i].thumb;
             var url = items[i].url;
@@ -1370,7 +1383,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         return true;
     };
 
-    this.handleSoundCloudUriQuery = function(query) {
+    this.handleSoundCloudUriQuery = function(query) {////--
         if (!query.match(/^http(s)?:\/\/(www\.)?soundcloud\.com/gi)) {
             return false;
         }

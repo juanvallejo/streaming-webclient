@@ -28,6 +28,7 @@ var Constants = {
 	// api results information
 	YOUTUBE_ITEM_KIND_PLAYLIST_ITEM: 'youtube#playlistItem',
 	TWITCH_ITEM_KIND_PLAYLIST_ITEM: 'twitch#playlistItem',
+	SOUNDCLOUD_ITEM_KIND_PLAYLIST_ITEM: 'soundcloud#playlistItem',
 
 	YOUTUBE_ITEM_KIND_ITEM: 'youtube#video',
 	TWITCH_ITEM_KIND_ITEM: 'twitch#video',
