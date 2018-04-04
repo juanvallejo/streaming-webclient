@@ -396,14 +396,73 @@
         }
     #controls-container-seek {
         width: 0;
+        left: 0;
         position: absolute;
         display: block;
         height:1%;
         background: rgba(255,255,255,1.0);
         top: -1%;
-        left: 0;
         z-index: 5;
     }
+    #controls-container-seek-buttons {
+        width: 100%;
+        left: 0;
+        position: absolute;
+        display: none;
+        opacity: 0;
+        height: 100%;
+        top: 0;
+        background: rgba(0,0,0,0.8);
+        z-index: 7; /* ////-- */
+    }
+        .controls-container-seek-buttons-button {
+            text-align: center;
+            width: 50%;
+            vertical-align: middle;
+            color: rgba(255,255, 255, 0.5);
+            display: table-cell;
+            /*background: red;*/
+        }
+            .controls-container-seek-buttons-button:first-child {
+                border: 0 solid rgba(255, 255, 255, 0.1);
+                border-width: 0 1px 0 0;
+                text-align: center;
+            }
+            .controls-container-seek-buttons-button:active {
+                background: rgba(0,94,129,0.5);
+            }
+        #controls-container-seek-buttons-close {
+            width: 8%;
+            padding: 2% 0;
+            position: absolute;
+            text-align: center;
+            display: block;
+            top: 0;
+            right: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            border-left: 1px solid rgba(255,255,255,0.2);
+        }
+            #controls-container-seek-buttons-close:active {
+                background: rgba(0,94,129,0.5);
+            }
+    #controls-container-seek-trigger {
+        width: 100%;
+        left: 0;
+        position: absolute;
+        display: table;
+        height: 18%;
+        top: -9%;
+        background: rgba(255,255,255,0.1);
+        opacity: 0;
+        z-index: 4;
+    }
+        #controls-container-seek-trigger-text {
+            text-align: center;
+            width: 100%;
+            vertical-align: middle;
+            color: rgba(255,255, 255, 0.5);
+            display: none;
+        }
 
     .controls-container-controls {
         width: 85%;
@@ -739,7 +798,15 @@ video, .api-player {
 </div>
 <div id="controls-container" class="user-controls noselect">
     <div class="opacity-overlay"></div>
-    <div id="controls-container-seek"></div>
+    <div id="controls-container-seek" class="controls-container-seek-elem"></div>
+    <div id="controls-container-seek-trigger" class="controls-container-seek-elem">
+        <span id="controls-container-seek-trigger-text"></span>
+    </div>
+    <div id="controls-container-seek-buttons" class="controls-container-seek-elem">
+        <div id="controls-container-seek-buttons-back" class="controls-container-seek-buttons-button" title="rewind stream by 30s; click + hold for fast rewind"><span class="fa fa-backward"></span></div>
+        <div id="controls-container-seek-buttons-forward" class="controls-container-seek-buttons-button" title="skip stream ahead by 30s; click + hold for fast forward"><span class="fa fa-forward"></span></div>
+        <div id="controls-container-seek-buttons-close"><span class="fa fa-close"></span></div>
+    </div>
     <div id="controls-container-vol">
         <div id="controls-container-vol-icon">
             <span class="fa fa-volume-up middle-container controls-container-volume-elem"></span>

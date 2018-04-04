@@ -44,13 +44,36 @@ var SEARCH_PANEL_QUEUE = 4;
 var VOLUME_ICON = 0;
 var VOLUME_SLIDER = 1;
 
+var SEEK_BAR = 0;
+var SEEK_TRIGGER = 1;
+var SEEK_BUTTONS = 2;
+
+var SEEK_BUTTONS_FORWARD = 0;
+var SEEK_BUTTONS_REWIND = 1;
+var SEEK_BUTTONS_CLOSE = 2;
+
 var MAX_CONTROLS_HIDE_TIMEOUT = 2500;
 
-function Controls(container, containerOverlay, controlsElemCollection, altControlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElem) {
+function Controls(container, containerOverlay, controlsElemCollection, altControlsElemCollection, infoElemCollection, volumeElemCollection, searchPanelElemCollection, seekElemCollection) {
     var self = this;
 
     this.container = container;
-    this.controlSeek = seekElem;
+    this.controlSeek = seekElemCollection.item(SEEK_BAR);
+    this.controlSeekTrigger = seekElemCollection.item(SEEK_TRIGGER);
+    this.controlSeekButtons = seekElemCollection.item(SEEK_BUTTONS);
+    this.controlSeekButtonsRewind = this.controlSeekButtons.children[SEEK_BUTTONS_REWIND];
+    this.controlSeekButtonsForward = this.controlSeekButtons.children[SEEK_BUTTONS_FORWARD];
+    this.controlSeekButtonsClose = this.controlSeekButtons.children[SEEK_BUTTONS_CLOSE];
+    // set to false on user interaction with the seeker
+    this.controlSeekCanUpdate = true;
+    // seek ui controls
+    this.controlSeekCanSeek = false;
+    this.controlSeekDelta = 0;
+    this.controlSeekDeltaStart = 0;
+    this.controlSeekClientWidthStart = 0;
+    this.controlSeekTriggerTextTimeout = null;
+    self.controlSeekTriggerText = 'Click + drag your mouse left or right to seek.';
+
 
     this.containerOverlay = containerOverlay;
     this.containerOverlayCloseButton = containerOverlay.children[CONTAINER_OVERLAY_CLOSE_BUTTON];
@@ -330,9 +353,15 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             percent = 100;
         }
 
-        this.controlSeek.style.width = percent + "%";
         this.playbackTimer = current;
         this.playbackTotal = total || 0;
+
+        // only update ui if it is not being interacted with by the user
+        if (!this.controlSeekCanUpdate) {
+            return;
+        }
+
+        this.controlSeek.style.width = percent + "%";
     };
 
     this.updateSearchPanel = function(items) {
@@ -839,7 +868,7 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         return true;
     };
 
-    this.handleSoundCloudUriQuery = function(query) {////--
+    this.handleSoundCloudUriQuery = function(query) {
         if (!query.match(/^http(s)?:\/\/(www\.)?soundcloud\.com/gi)) {
             return false;
         }
@@ -1000,9 +1029,175 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
         self.handleAltControlDeleteItem();
     });
 
+    // control seek interaction
+    $(self.controlSeekTrigger).on('mouseout', function() {
+        if (!self.controlSeekCanSeek) {
+            $(self.controlSeekTrigger).animate({
+                opacity: '0'
+            }, {
+                duration: 500,
+                queue: false
+            });
+        }
+    });
+    $(self.controlSeekTrigger).on('mouseover', function() {
+        if (!self.controlSeekCanSeek) {
+            $(self.controlSeekTrigger).animate({
+                opacity: '1.0'
+            }, {
+                duration: 500,
+                queue: false
+            });
+
+            return;
+        }
+    });
+    $(self.controlSeekTrigger).on('mousedown', function(e) {
+        if (!self.playbackTotal) {
+            return;
+        }
+
+        if (self.controlSeekCanSeek && self.controlSeekCanUpdate) {
+            self.controlSeekCanUpdate = false;
+            self.controlSeekDeltaStart = e.pageX;
+            self.controlSeekClientWidthStart = self.controlSeek.clientWidth;
+        }
+    });
+    $(self.controlSeekTrigger).on('mouseup', function() {
+        if (!self.playbackTotal) {
+            self.controlSeekButtons.style.display = 'table';
+            $(self.controlSeekButtons).animate({
+                opacity: "1.0",
+            }, {
+                duration: 500,
+                queue: false
+            });
+            return;
+        }
+
+        if (self.controlSeekCanSeek) {
+            if (self.controlSeekDelta === 0) {
+                self.controlSeekCanSeek = false;
+                self.controlSeekTrigger.children[0].style.display = 'none';
+
+                $(self.controlSeekTrigger).animate({
+                    height: "18%"
+                }, {
+                    opacity: "0",
+                    duration: 500,
+                    queue: false,
+                    complete: function() {
+                        if (!self.controlSeekCanSeek) {
+                            self.controlSeekTrigger.style.background = 'rgba(255,255,255,0.1)';
+                        }
+                    }
+                });
+                return;
+            }
+
+            // update stream position
+            var percent  = parseInt((self.controlSeekDelta / self.controlSeekTrigger.clientWidth) * 100);
+            var existingPercent = parseInt(self.controlSeekClientWidthStart / self.controlSeekTrigger.clientWidth * 100);
+            var newPercent = existingPercent + percent;
+
+            if (percent !== existingPercent) {
+                if (newPercent < 0) {
+                    newPercent = 0;
+                }
+                if (newPercent > 100) {
+                    newPercent = 100;
+                }
+
+                var newTime = parseInt(newPercent * self.playbackTotal / 100);
+                self.emit("chatcommand", ["/stream seek " + newTime]);
+            }
+
+            self.controlSeekDelta = 0;
+            self.controlSeekCanUpdate = true;
+            return;
+        }
+
+        $(self.controlSeekTrigger).animate({
+            height: "110%"
+        }, {
+            duration: 500,
+            queue: false
+        });
+
+        self.controlSeekTrigger.style.background = 'rgba(0,0,0,0.8)';
+        self.controlSeekTrigger.children[0].style.display = 'table-cell';
+        self.controlSeekTrigger.children[0].innerHTML = self.controlSeekTriggerText;
+
+        self.controlSeekCanSeek = true;
+    });
+
+    $(self.controlSeekButtonsClose).on('click', function() {
+        $(self.controlSeekButtons).animate({
+            opacity: "0.0"
+        }, {
+            duration: 500,
+            queue: false,
+            complete: function() {
+                self.controlSeekButtons.style.display = "none";
+            }
+        });
+    });
+
+    $(self.controlSeekButtonsForward).on('click', function() {
+        self.emit("chatcommand", ["/stream seek -30s"]);
+    });
+
+    $(self.controlSeekButtonsRewind).on('click', function() {
+        self.emit("chatcommand", ["/stream seek +30s"]);
+    });
+
+    // handle seek bar drag
     $(window).on("mouseup", function() {
+        if (!self.playbackTotal) {
+            return;
+        }
+
+       self.controlSeekCanUpdate = true;
        self.volumeSliderActive = false;
        self.volumeSliderDelta = 0;
+
+       if (self.controlSeekCanSeek) {
+           clearTimeout(self.controlSeekTriggerTextTimeout);
+           self.controlSeekTriggerTextTimeout = setTimeout(function () {
+               self.controlSeekTrigger.children[0].innerHTML = self.controlSeekTriggerText;
+           }, 1000);
+       }
+    });
+
+    // handle seek bar drag
+    $(window).on("mousemove", function(e) {
+        if (!self.playbackTotal) {
+            return;
+        }
+
+        if (self.controlSeekCanSeek && !self.controlSeekCanUpdate) {
+            self.controlSeekDelta = (e.pageX - self.controlSeekDeltaStart);
+
+            var percent  = parseInt((self.controlSeekDelta / self.controlSeekTrigger.clientWidth) * 100);
+            var existingPercent = parseInt(self.controlSeekClientWidthStart / self.controlSeekTrigger.clientWidth * 100);
+            var newPercent = existingPercent + percent;
+
+            if (percent !== existingPercent) {
+                if (newPercent < 0) {
+                    newPercent = 0;
+                }
+                if (newPercent > 100) {
+                    newPercent = 100;
+                }
+
+                var newTime = parseInt(newPercent * self.playbackTotal / 100);
+                clearTimeout(self.controlSeekTriggerTextTimeout);
+
+                self.controlSeek.style.width = newPercent + "%";
+                self.controlSeekTrigger.children[0].style.display = 'table-cell';
+                self.controlSeekTrigger.children[0].innerHTML = secondsToHumanTime(newTime);
+            }
+        }
     });
 
     // TODO: show percentage while mouse is down

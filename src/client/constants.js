@@ -13,6 +13,9 @@ var Constants = {
 
 	STREAM_URL_PREFIX: '/s/',
 
+	// controls elems
+	CTRL_SEEK_TRIGGER: 'controls-container-seek-trigger',
+
 	// dom information
 	DOM_YT_CONTAINER: 'yt-video',
 	DOM_TWITCH_CONTAINER: 'twitch-video',

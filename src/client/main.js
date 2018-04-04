@@ -50,7 +50,7 @@ function App(window, document) {
         document.getElementsByClassName("controls-container-info-inner"),
         document.getElementsByClassName("controls-container-volume-elem"),
         document.getElementsByClassName("controls-container-panel-elem"),
-        document.getElementById("controls-container-seek")
+        document.getElementsByClassName("controls-container-seek-elem")
     );
 
     // set application states
