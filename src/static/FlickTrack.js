@@ -3394,6 +3394,10 @@ function Video(videoElement, sTrackElement) {
         // handle url sanitizing / parsing accordingly
         if (data.extra.stream.kind === Cons.STREAM_KIND_TWITCH_CLIP) {
             url = twitchClipVideoUrlFromUrl(data.extra.stream.url);
+        } else if (data.extra.stream.kind === Cons.STREAM_KIND_LOCAL) {
+            if (data.extra.stream.url.match(/^http(s)?:\/\//gi)) {
+                url = data.extra.stream.url;
+            }
         }
 
         try {
