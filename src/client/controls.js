@@ -1153,14 +1153,14 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
     // handle seek bar drag
     $(window).on("mouseup", function() {
+        self.volumeSliderActive = false;
+        self.volumeSliderDelta = 0;
+
         if (!self.playbackTotal) {
             return;
         }
 
        self.controlSeekCanUpdate = true;
-       self.volumeSliderActive = false;
-       self.volumeSliderDelta = 0;
-
        if (self.controlSeekCanSeek) {
            clearTimeout(self.controlSeekTriggerTextTimeout);
            self.controlSeekTriggerTextTimeout = setTimeout(function () {
