@@ -154,7 +154,9 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	        this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-middle-wrapper"><span class="chat-container-view-message-middle">Unable to display users at this time.</span></span>';
 	        return;
         }
-	    this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-center"><span class="chat-container-view-message-text">List of users</span></span>';
+
+        var chatHeader = new ChatUserHeader("List of users");
+        chatHeader.appendReplaceTo(self.userView);
 
 	    for (var i = 0; i < users.length; i++) {
 	        var hlClassName = '';
@@ -171,8 +173,12 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
                 statuses.unshift('<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>');
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
-        }
+            var userField = document.createElement("span");
+			userField.className = "chat-container-view-message chat-container-view-message";
+            userField.innerHTML = '<span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span>';
+
+            this.userView.appendChild(userField);
+	    }
 	};
 
 	this.isHidden = function() {
@@ -453,6 +459,59 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 		}
 	});
 };
+
+// ChatUserHeader ////--
+function ChatUserHeader(title) {
+    var self = this;
+
+    this.title = title;
+
+    this.elem = document.createElement("span");
+    this.elem.className = "chat-container-view-message chat-container-view-message-center";
+
+    this.titleElem = document.createElement("span");
+    this.titleElem.className = "chat-container-view-message-text";
+    this.titleElem.innerHTML = title;
+
+    this.buttonWrapper = document.createElement("div");
+    this.buttonWrapper.className = "chat-container-view-button-wrapper";
+
+    this.settingsButton = document.createElement("span");
+    this.settingsButton.id = "chat-container-view-settings-btn";
+    this.settingsButton.className = "button chat-container-view-button";
+    this.settingsButton.title = "User settings";
+    this.settingsButton.innerHTML = "<span class='span-wrapper'><span class='fa fa-gear'></span></span>";
+    this.settingsButton.addEventListener("click", function() {
+        if (this.active) {
+            var classes = this.className.split(" active");
+            this.className = classes[0];
+            if (classes.length > 1) {
+                this.className += classes[1];
+            }
+
+            this.active = false;
+            return;
+        }
+
+
+        this.active = true;
+        this.className += " active";
+    });
+
+    // append child elems
+    this.elem.appendChild(this.titleElem);
+    this.elem.appendChild(this.buttonWrapper);
+    this.buttonWrapper.appendChild(this.settingsButton);
+
+    this.appendTo = function(parent) {
+        parent.appendChild(self.elem);
+    };
+
+    this.appendReplaceTo = function(parent) {
+        parent.innerHTML = '';
+        this.appendTo(parent);
+    };
+}
 
 Chat.prototype = new Emitter();
 

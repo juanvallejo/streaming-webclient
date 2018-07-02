@@ -458,6 +458,33 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
                     // disable re-queueing video for 10mins
                     item.disable(60 * 10 * 1000);
+
+                    if (item.kind === Cons.STREAM_KIND_YOUTUBE) {
+                        item.showAlert("Queueing, please wait...", 60 * 1000);
+
+                        RESTYoutubeCall("/api/youtube/transform/" + encodeYoutubeURIComponent(vidUrl), function(data, error) {
+                            if (error !== null || !data.items || !data.items.length) {
+                                // if we encounter an error attempting to convert url,
+                                // fetch and use youtube api player as fallback.
+                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                self.emit("chatcommand", ["/queue add " + vidUrl]);
+                                return;
+                            }
+
+                            var infoUrl = data.items[0].url;
+                            if (!infoUrl || !infoUrl.length) {
+                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                self.emit("chatcommand", ["/queue add " + vidUrl]);
+                                return;
+                            }
+
+                            item.showSuccess("Done, please wait...", 2000);
+                            self.emit("chatcommand", ["/queue add " + infoUrl]);
+                        });
+
+                        return;
+                    }
+
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));
@@ -609,6 +636,13 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             var urlPieces = items[i].url.split("?clip=");
             if (kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
                 desc = 'Twitch clip - ' + urlPieces[1];
+            } else if (kind === Cons.STREAM_KIND_LOCAL) {
+                // special-case urls pointing directly to YouTube
+                // video sources
+                var segs = items[i].url.split("youtubeid=");
+                if (segs.length > 1) {
+                    desc = "https://www.youtube.com/watch?v=" + segs[1];
+                }
             }
 
             var item = new Result(name, kind, items[i].url, thumb, desc);

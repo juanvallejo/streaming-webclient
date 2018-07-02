@@ -196,7 +196,9 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	        this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-middle-wrapper"><span class="chat-container-view-message-middle">Unable to display users at this time.</span></span>';
 	        return;
         }
-	    this.userView.innerHTML = '<span class="chat-container-view-message chat-container-view-message-center"><span class="chat-container-view-message-text">List of users</span></span>';
+
+        var chatHeader = new ChatUserHeader("List of users");
+        chatHeader.appendReplaceTo(self.userView);
 
 	    for (var i = 0; i < users.length; i++) {
 	        var hlClassName = '';
@@ -213,8 +215,12 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
                 statuses.unshift('<span class="fa-wrapper" title="This user has queued up the current stream"><span class="fa fa-music"></span></span>');
             }
 
-	        this.userView.innerHTML += '<span class="chat-container-view-message chat-container-view-message"><span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span></span>';
-        }
+            var userField = document.createElement("span");
+			userField.className = "chat-container-view-message chat-container-view-message";
+            userField.innerHTML = '<span class="chat-container-view-message-status">' + (statuses.join('')) + '</span><span class="chat-container-view-message-text' + hlClassName + '">' + (users[i].username || users[i].id || '[Unknown]') + '</span>';
+
+            this.userView.appendChild(userField);
+	    }
 	};
 
 	this.isHidden = function() {
@@ -495,6 +501,59 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 		}
 	});
 };
+
+// ChatUserHeader ////--
+function ChatUserHeader(title) {
+    var self = this;
+
+    this.title = title;
+
+    this.elem = document.createElement("span");
+    this.elem.className = "chat-container-view-message chat-container-view-message-center";
+
+    this.titleElem = document.createElement("span");
+    this.titleElem.className = "chat-container-view-message-text";
+    this.titleElem.innerHTML = title;
+
+    this.buttonWrapper = document.createElement("div");
+    this.buttonWrapper.className = "chat-container-view-button-wrapper";
+
+    this.settingsButton = document.createElement("span");
+    this.settingsButton.id = "chat-container-view-settings-btn";
+    this.settingsButton.className = "button chat-container-view-button";
+    this.settingsButton.title = "User settings";
+    this.settingsButton.innerHTML = "<span class='span-wrapper'><span class='fa fa-gear'></span></span>";
+    this.settingsButton.addEventListener("click", function() {
+        if (this.active) {
+            var classes = this.className.split(" active");
+            this.className = classes[0];
+            if (classes.length > 1) {
+                this.className += classes[1];
+            }
+
+            this.active = false;
+            return;
+        }
+
+
+        this.active = true;
+        this.className += " active";
+    });
+
+    // append child elems
+    this.elem.appendChild(this.titleElem);
+    this.elem.appendChild(this.buttonWrapper);
+    this.buttonWrapper.appendChild(this.settingsButton);
+
+    this.appendTo = function(parent) {
+        parent.appendChild(self.elem);
+    };
+
+    this.appendReplaceTo = function(parent) {
+        parent.innerHTML = '';
+        this.appendTo(parent);
+    };
+}
 
 Chat.prototype = new Emitter();
 
@@ -1005,6 +1064,33 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
                     // disable re-queueing video for 10mins
                     item.disable(60 * 10 * 1000);
+
+                    if (item.kind === Cons.STREAM_KIND_YOUTUBE) {
+                        item.showAlert("Queueing, please wait...", 60 * 1000);
+
+                        RESTYoutubeCall("/api/youtube/transform/" + encodeYoutubeURIComponent(vidUrl), function(data, error) {
+                            if (error !== null || !data.items || !data.items.length) {
+                                // if we encounter an error attempting to convert url,
+                                // fetch and use youtube api player as fallback.
+                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                self.emit("chatcommand", ["/queue add " + vidUrl]);
+                                return;
+                            }
+
+                            var infoUrl = data.items[0].url;
+                            if (!infoUrl || !infoUrl.length) {
+                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                self.emit("chatcommand", ["/queue add " + vidUrl]);
+                                return;
+                            }
+
+                            item.showSuccess("Done, please wait...", 2000);
+                            self.emit("chatcommand", ["/queue add " + infoUrl]);
+                        });
+
+                        return;
+                    }
+
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));
@@ -1156,6 +1242,13 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
             var urlPieces = items[i].url.split("?clip=");
             if (kind === Cons.STREAM_KIND_TWITCH_CLIP && urlPieces.length > 1) {
                 desc = 'Twitch clip - ' + urlPieces[1];
+            } else if (kind === Cons.STREAM_KIND_LOCAL) {
+                // special-case urls pointing directly to YouTube
+                // video sources
+                var segs = items[i].url.split("youtubeid=");
+                if (segs.length > 1) {
+                    desc = "https://www.youtube.com/watch?v=" + segs[1];
+                }
             }
 
             var item = new Result(name, kind, items[i].url, thumb, desc);
@@ -2584,6 +2677,10 @@ function Result(name, kind, url, thumb, description) {
     this.thumbImgUrl = thumb;
     this.description = description;
 
+    if (this.description.length > 100) {
+        this.description = this.description.substring(0, 100) + "...";
+    }
+
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
 
@@ -2619,6 +2716,13 @@ function Result(name, kind, url, thumb, description) {
     if (nameTruncated) {
         this.info.title = name;
     }
+    
+    this.infoAlert = document.createElement("div");
+    this.infoAlert.className = "controls-container-panel-result-info-alert";
+    this.infoAlert.innerHTML = "";
+    this.infoAlert.style.display = "none";
+
+    this.info.appendChild(this.infoAlert);
 
     // build sub-tree
     this.container.appendChild(this.thumb);
@@ -2657,6 +2761,41 @@ function Result(name, kind, url, thumb, description) {
         elem.appendChild(self.container);
     };
 
+    this.hideAlert = function(animate) {
+        $(self.infoAlert).stop();
+        clearTimeout(self.showAlert.timeout);
+        if (animate) {
+            $(self.infoAlert).fadeOut('normal');
+            return;
+        }
+
+        self.infoAlert.style.display = 'none';
+    };
+
+    this.showAlertWithColor = function(msg, timeout, color) {
+        self.infoAlert.innerHTML = msg;
+        self.infoAlert.style.backgroundColor = color || "rgba(0,0,0,1.0)";
+
+        self.hideAlert(false);
+        $(self.infoAlert).fadeIn('normal');
+        clearTimeout(self.showAlert.timeout);
+        self.showAlert.timeout = setTimeout(function() {
+            self.hideAlert(true);
+        }, timeout);
+    };
+
+    this.showAlert = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(0,0,0,1.0)");
+    };
+
+    this.showSuccess = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(67,196,55, 1.0)");
+    };
+
+    this.showFailure = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,1.0)");
+    };
+    
     this.onClick = function(handler) {
         self.container.addEventListener("click", handler || function(e) {});
     };

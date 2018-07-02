@@ -19,6 +19,10 @@ function Result(name, kind, url, thumb, description) {
     this.thumbImgUrl = thumb;
     this.description = description;
 
+    if (this.description.length > 100) {
+        this.description = this.description.substring(0, 100) + "...";
+    }
+
     this.container = document.createElement("div");
     this.container.className = "controls-container-panel-result";
 
@@ -54,6 +58,13 @@ function Result(name, kind, url, thumb, description) {
     if (nameTruncated) {
         this.info.title = name;
     }
+    
+    this.infoAlert = document.createElement("div");
+    this.infoAlert.className = "controls-container-panel-result-info-alert";
+    this.infoAlert.innerHTML = "";
+    this.infoAlert.style.display = "none";
+
+    this.info.appendChild(this.infoAlert);
 
     // build sub-tree
     this.container.appendChild(this.thumb);
@@ -92,6 +103,41 @@ function Result(name, kind, url, thumb, description) {
         elem.appendChild(self.container);
     };
 
+    this.hideAlert = function(animate) {
+        $(self.infoAlert).stop();
+        clearTimeout(self.showAlert.timeout);
+        if (animate) {
+            $(self.infoAlert).fadeOut('normal');
+            return;
+        }
+
+        self.infoAlert.style.display = 'none';
+    };
+
+    this.showAlertWithColor = function(msg, timeout, color) {
+        self.infoAlert.innerHTML = msg;
+        self.infoAlert.style.backgroundColor = color || "rgba(0,0,0,1.0)";
+
+        self.hideAlert(false);
+        $(self.infoAlert).fadeIn('normal');
+        clearTimeout(self.showAlert.timeout);
+        self.showAlert.timeout = setTimeout(function() {
+            self.hideAlert(true);
+        }, timeout);
+    };
+
+    this.showAlert = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(0,0,0,1.0)");
+    };
+
+    this.showSuccess = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(67,196,55, 1.0)");
+    };
+
+    this.showFailure = function(msg, timeout) {
+        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,1.0)");
+    };
+    
     this.onClick = function(handler) {
         self.container.addEventListener("click", handler || function(e) {});
     };
