@@ -256,6 +256,9 @@
                 background: rgba(0,94,129,0.5);
             }
 
+            .controls-container-panel-result.disabled .controls-container-panel-result-thumb {
+                opacity: 0.3;
+            }
             .controls-container-panel-result-thumb {
                 width: 20%;
                 min-width: 120px;
@@ -289,17 +292,20 @@
                 display: table;
                 text-align: center;
             }
+                .controls-container-panel-result.disabled .controls-container-panel-result-info span {
+                    opacity: 0.3;
+                }
                 .controls-container-panel-result-info span {
                     display: table-cell;
                     vertical-align: middle;
                 }
                 .controls-container-panel-result-info-alert {
                     background: rgba(0,0,0,1.0);
-                    width: 100%;
+                    width: 97.5%;
                     padding: 10px 0 10px 0;
                     position: absolute;
                     bottom: 0;
-                    left: 0;
+                    right: 0;
                     min-height: 10%;
                 }
             .controls-container-panel-result-duration {
@@ -791,9 +797,6 @@
 }
 .text-white {
 	color: rgba(255,255,255, 0.8);
-}
-.disabled {
-    opacity: 0.3;
 }
 .hidden {
     display: none;

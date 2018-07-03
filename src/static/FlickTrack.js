@@ -1079,18 +1079,19 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
                             var infoUrl = data.items[0].url;
                             if (!infoUrl || !infoUrl.length) {
-                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                item.showFailure("Defaulting to iFrame player...", 5000);
                                 self.emit("chatcommand", ["/queue add " + vidUrl]);
                                 return;
                             }
 
-                            item.showSuccess("Done, please wait...", 2000);
+                            item.showSuccess("Queued!", 2000);
                             self.emit("chatcommand", ["/queue add " + infoUrl]);
                         });
 
                         return;
                     }
 
+                    item.showSuccess("Queued!", 2000);
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));
@@ -2789,11 +2790,11 @@ function Result(name, kind, url, thumb, description) {
     };
 
     this.showSuccess = function(msg, timeout) {
-        self.showAlertWithColor(msg, timeout, "rgba(67,196,55, 1.0)");
+        self.showAlertWithColor(msg, timeout, "rgba(70, 180, 75, 0.5)");
     };
 
     this.showFailure = function(msg, timeout) {
-        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,1.0)");
+        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,0.5)");
     };
     
     this.onClick = function(handler) {

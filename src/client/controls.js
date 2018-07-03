@@ -473,18 +473,19 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
                             var infoUrl = data.items[0].url;
                             if (!infoUrl || !infoUrl.length) {
-                                item.showFailure("Defaulting to iFrame player...", 2000);
+                                item.showFailure("Defaulting to iFrame player...", 5000);
                                 self.emit("chatcommand", ["/queue add " + vidUrl]);
                                 return;
                             }
 
-                            item.showSuccess("Done, please wait...", 2000);
+                            item.showSuccess("Queued!", 2000);
                             self.emit("chatcommand", ["/queue add " + infoUrl]);
                         });
 
                         return;
                     }
 
+                    item.showSuccess("Queued!", 2000);
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));

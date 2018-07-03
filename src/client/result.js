@@ -131,11 +131,11 @@ function Result(name, kind, url, thumb, description) {
     };
 
     this.showSuccess = function(msg, timeout) {
-        self.showAlertWithColor(msg, timeout, "rgba(67,196,55, 1.0)");
+        self.showAlertWithColor(msg, timeout, "rgba(70, 180, 75, 0.5)");
     };
 
     this.showFailure = function(msg, timeout) {
-        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,1.0)");
+        self.showAlertWithColor(msg, timeout, "rgba(180,48,0,0.5)");
     };
     
     this.onClick = function(handler) {
