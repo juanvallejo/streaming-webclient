@@ -2,8 +2,9 @@
  * Chat handler
  */
 
-var Emitter = require('./proto/emitter.js');
-var Cons = require('./constants.js');
+var Emitter = require('../proto/emitter.js');
+var Cons = require('../constants.js');
+var UsersHeader = require('./header.js');
 
 var INPUT_ELEM_INPUT = 0;
 var INPUT_ELEM_USERS = 1;
@@ -14,7 +15,7 @@ var CONTAINER_ELEM_CONTAINER = 0;
 var VIEW_ELEM_USER = 0;
 var VIEW_ELEM_CHAT = 1;
 
-function Chat(containerElemCollection, viewElemCollection, inputElemCollection, usernameInputElem, overlayElem) {
+function Chat(containerElemCollection, viewElemCollection, inputElemCollection, usernameInputElem, overlayElem, overlayPanels) {
 	var self = this;
 
 	this.viewElemDefaultOpacity = 0.8;
@@ -155,7 +156,7 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	        return;
         }
 
-        var chatHeader = new ChatUserHeader("List of users");
+        var chatHeader = new UsersHeader("List of users", overlayPanels);
         chatHeader.appendReplaceTo(self.userView);
 
 	    for (var i = 0; i < users.length; i++) {
@@ -459,59 +460,6 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 		}
 	});
 };
-
-// ChatUserHeader ////--
-function ChatUserHeader(title) {
-    var self = this;
-
-    this.title = title;
-
-    this.elem = document.createElement("span");
-    this.elem.className = "chat-container-view-message chat-container-view-message-center";
-
-    this.titleElem = document.createElement("span");
-    this.titleElem.className = "chat-container-view-message-text";
-    this.titleElem.innerHTML = title;
-
-    this.buttonWrapper = document.createElement("div");
-    this.buttonWrapper.className = "chat-container-view-button-wrapper";
-
-    this.settingsButton = document.createElement("span");
-    this.settingsButton.id = "chat-container-view-settings-btn";
-    this.settingsButton.className = "button chat-container-view-button";
-    this.settingsButton.title = "User settings";
-    this.settingsButton.innerHTML = "<span class='span-wrapper'><span class='fa fa-gear'></span></span>";
-    this.settingsButton.addEventListener("click", function() {
-        if (this.active) {
-            var classes = this.className.split(" active");
-            this.className = classes[0];
-            if (classes.length > 1) {
-                this.className += classes[1];
-            }
-
-            this.active = false;
-            return;
-        }
-
-
-        this.active = true;
-        this.className += " active";
-    });
-
-    // append child elems
-    this.elem.appendChild(this.titleElem);
-    this.elem.appendChild(this.buttonWrapper);
-    this.buttonWrapper.appendChild(this.settingsButton);
-
-    this.appendTo = function(parent) {
-        parent.appendChild(self.elem);
-    };
-
-    this.appendReplaceTo = function(parent) {
-        parent.innerHTML = '';
-        this.appendTo(parent);
-    };
-}
 
 Chat.prototype = new Emitter();
 

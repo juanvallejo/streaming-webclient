@@ -16,6 +16,9 @@ var Constants = {
 	// controls elems
 	CTRL_SEEK_TRIGGER: 'controls-container-seek-trigger',
 
+	// overlays container
+	OVERLAYS_CONTAINER: 'overlays-container',
+
 	// dom information
 	DOM_YT_CONTAINER: 'yt-video',
 	DOM_TWITCH_CONTAINER: 'twitch-video',

@@ -39,13 +39,14 @@ function Banner(banner) {
 };
 
 module.exports = Banner;
-},{"./constants.js":3}],2:[function(require,module,exports){
+},{"./constants.js":4}],2:[function(require,module,exports){
 /**
  * Chat handler
  */
 
-var Emitter = require('./proto/emitter.js');
-var Cons = require('./constants.js');
+var Emitter = require('../proto/emitter.js');
+var Cons = require('../constants.js');
+var UsersHeader = require('./header.js');
 
 var INPUT_ELEM_INPUT = 0;
 var INPUT_ELEM_USERS = 1;
@@ -56,7 +57,7 @@ var CONTAINER_ELEM_CONTAINER = 0;
 var VIEW_ELEM_USER = 0;
 var VIEW_ELEM_CHAT = 1;
 
-function Chat(containerElemCollection, viewElemCollection, inputElemCollection, usernameInputElem, overlayElem) {
+function Chat(containerElemCollection, viewElemCollection, inputElemCollection, usernameInputElem, overlayElem, overlayPanels) {
 	var self = this;
 
 	this.viewElemDefaultOpacity = 0.8;
@@ -197,7 +198,7 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	        return;
         }
 
-        var chatHeader = new ChatUserHeader("List of users");
+        var chatHeader = new UsersHeader("List of users", overlayPanels);
         chatHeader.appendReplaceTo(self.userView);
 
 	    for (var i = 0; i < users.length; i++) {
@@ -502,8 +503,14 @@ function Chat(containerElemCollection, viewElemCollection, inputElemCollection, 
 	});
 };
 
-// ChatUserHeader ////--
-function ChatUserHeader(title) {
+Chat.prototype = new Emitter();
+
+module.exports = Chat;
+},{"../constants.js":4,"../proto/emitter.js":10,"./header.js":3}],3:[function(require,module,exports){
+var isActive = false;
+
+// ChatUserHeader
+function ChatUserHeader(title, overlays) {
     var self = this;
 
     this.title = title;
@@ -524,21 +531,35 @@ function ChatUserHeader(title) {
     this.settingsButton.title = "User settings";
     this.settingsButton.innerHTML = "<span class='span-wrapper'><span class='fa fa-gear'></span></span>";
     this.settingsButton.addEventListener("click", function() {
-        if (this.active) {
+        if (isActive) {
             var classes = this.className.split(" active");
             this.className = classes[0];
             if (classes.length > 1) {
                 this.className += classes[1];
             }
 
-            this.active = false;
+            isActive = false;
+            overlays.settings.hide();
             return;
         }
 
-
-        this.active = true;
+        isActive = true;
         this.className += " active";
+
+        overlays.settings.show();
+        // listen for an "exit" event from this overlay
+        overlays.settings.onExit(function() {
+            if (!isActive) {
+                return;
+            }
+            self.settingsButton.click();
+        });
     });
+
+    // restore previous button visual state
+    if (isActive) {
+        this.settingsButton.className += " active";
+    }
 
     // append child elems
     this.elem.appendChild(this.titleElem);
@@ -555,10 +576,8 @@ function ChatUserHeader(title) {
     };
 }
 
-Chat.prototype = new Emitter();
-
-module.exports = Chat;
-},{"./constants.js":3,"./proto/emitter.js":6}],3:[function(require,module,exports){
+module.exports = ChatUserHeader;
+},{}],4:[function(require,module,exports){
 /**
  * application constants
  */
@@ -576,6 +595,9 @@ var Constants = {
 
 	// controls elems
 	CTRL_SEEK_TRIGGER: 'controls-container-seek-trigger',
+
+	// overlays container
+	OVERLAYS_CONTAINER: 'overlays-container',
 
 	// dom information
 	DOM_YT_CONTAINER: 'yt-video',
@@ -603,7 +625,7 @@ var Constants = {
 };
 
 module.exports = Constants;
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 /**
  * Controls handler
  */
@@ -1950,17 +1972,18 @@ function RESTYoutubeCall(endpoint, callback) {
 Controls.prototype = new Emitter();
 
 module.exports = Controls;
-},{"./constants.js":3,"./proto/emitter.js":6,"./result.js":7}],5:[function(require,module,exports){
+},{"./constants.js":4,"./proto/emitter.js":10,"./result.js":11}],6:[function(require,module,exports){
 /**
  * Main entry point for the client app
  */
 
 var Banner = require('./banner.js');
-var Chat = require('./chat.js');
+var Chat = require('./chat/chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
 var Socket = require('./socket.js');
 var Controls = require('./controls.js');
+var Overlays = require('./overlays/overlays.js');
 
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
@@ -1973,9 +1996,12 @@ function App(window, document) {
 
     this.localStorage = window.localStorage;
 
-    this.overlay = document.getElementById("overlay");
+    this.screenOutputOverlay = document.getElementById("overlay");
     this.out = document.getElementById("out");
     this.outTimeout = null;
+
+    // container for ui overlays (settings, etc.)
+    this.overlayPanels = new Overlays(document.getElementById('overlays-container'));
 
     this.opacityOverlayClassName = ".opacity-overlay";
     this.defaultInterfaceOpacity = 0.8;
@@ -1985,7 +2011,8 @@ function App(window, document) {
         document.getElementsByClassName('chat-container-view-elem'),
         document.getElementsByClassName('chat-container-input-elem'),
         document.getElementById('chat-container-username-input'),
-        document.getElementById('chat-container-overlay')
+        document.getElementById('chat-container-overlay'),
+        self.overlayPanels
     );
 
     this.socket = new Socket(getSocketAddr(window));
@@ -2145,8 +2172,8 @@ function App(window, document) {
     this.showOutput = function(text, timeout) {
         clearTimeout(this.outTimeout);
 
-        $(this.overlay).stop();
-        this.overlay.style.display = 'table';
+        $(this.screenOutputOverlay).stop();
+        this.screenOutputOverlay.style.display = 'table';
         this.out.innerHTML = text;
 
         if (!timeout) {
@@ -2159,7 +2186,7 @@ function App(window, document) {
     };
 
     this.hideOutput = function() {
-        $(self.overlay).fadeOut();
+        $(self.screenOutputOverlay).fadeOut();
     };
 
     this.socket.on('error', function(err) {
@@ -2628,7 +2655,98 @@ function handleRemoteRequest(data, callback) {
 }
 
 window.App = App;
-},{"./banner.js":1,"./chat.js":2,"./constants.js":3,"./controls.js":4,"./socket.js":8,"./video.js":9}],6:[function(require,module,exports){
+},{"./banner.js":1,"./chat/chat.js":2,"./constants.js":4,"./controls.js":5,"./overlays/overlays.js":7,"./socket.js":12,"./video.js":13}],7:[function(require,module,exports){
+var SettingsPanel = require('./settings.js');
+
+// Convenience object for holding instances of overlay panels
+function OverlayPanels(parent) {
+    this.parent = parent;
+
+    this.settings = new SettingsPanel(parent);
+}
+
+module.exports = OverlayPanels;
+},{"./settings.js":9}],8:[function(require,module,exports){
+function Overlay() {
+    var isShowing = false;
+    var self = null;
+
+    var onExitCallbacks = [];
+
+    this.elem = document.createElement('div');
+    this.elem.className = 'overlay';
+
+    this.init = function(ctx) {
+        self = ctx;
+    };
+
+    this.show = function() {
+        if (!this.parent) {
+            console.log('FATAL: unable to display settings overlay - nil or undefined parent node');
+            return;
+        }
+
+        // remove any present sibling overlays
+        for(var i = 0; i < this.parent.children.length; i++) {
+            this.parent.removeChild(this.parent.children[i]);
+        }
+
+        isShowing = true;
+        this.parent.style.display = 'block';
+        this.parent.appendChild(this.elem);
+        this.elem.focus();
+    };
+
+    this.hide = function() {
+        if (!this.parent) {
+            console.log('FATAL: unable to close settings overlay - nil or undefined parent node');
+            return;
+        }
+
+        isShowing = false;
+        this.parent.removeChild(this.elem);
+
+        if (!this.parent.children.length) {
+            this.parent.style.display = 'none';
+        }
+    };
+
+    this.onExit = function(fn) {
+        onExitCallbacks.push(fn);
+    };
+
+    window.addEventListener('keydown', function(e) {
+       if (e.keyCode !== 27) {
+           return;
+       }
+
+       if (!isShowing) {
+           return;
+       }
+
+       if (!self) {
+           console.log("FATAL: attempt to add event listener to overlay without calling init(context) first.");
+           return;
+       }
+
+       for(var i = 0; i < onExitCallbacks.length; i++) {
+           onExitCallbacks.shift().call(self);
+       }
+    });
+}
+
+module.exports = Overlay;
+},{}],9:[function(require,module,exports){
+var Overlay = require('./proto/overlay.js');
+
+function Settings(parent) {
+    this.init(this);
+    this.parent = parent;
+}
+
+Settings.prototype = new Overlay();
+module.exports = Settings;
+},{"./proto/overlay.js":8}],10:[function(require,module,exports){
 /**
  * Emitter prototype for objects that send and receive events
  */
@@ -2656,7 +2774,7 @@ function Emitter() {
 }
 
 module.exports = Emitter;
-},{}],7:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var Cons = require('./constants.js');
 
 function Result(name, kind, url, thumb, description) {
@@ -2887,7 +3005,7 @@ function addThumbSpanClass(span, kind) {
         span.className = "fa fa-film";
     }
 }
-},{"./constants.js":3}],8:[function(require,module,exports){
+},{"./constants.js":4}],12:[function(require,module,exports){
 /**
  * application socket utils, emitters, and listeners
  */
@@ -2978,7 +3096,7 @@ function Socket(url) {
 Socket.prototype = new Emitter();
 
 module.exports = Socket;
-},{"./proto/emitter.js":6}],9:[function(require,module,exports){
+},{"./proto/emitter.js":10}],13:[function(require,module,exports){
 /**
  * handles local video streaming
  */
@@ -3969,4 +4087,4 @@ function ytDurationToSeconds(ytDuration) {
 
 module.exports = Video;
 
-},{"./constants.js":3,"./proto/emitter.js":6}]},{},[5]);
+},{"./constants.js":4,"./proto/emitter.js":10}]},{},[6]);

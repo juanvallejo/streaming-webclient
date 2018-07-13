@@ -3,11 +3,12 @@
  */
 
 var Banner = require('./banner.js');
-var Chat = require('./chat.js');
+var Chat = require('./chat/chat.js');
 var Cons = require('./constants.js');
 var VideoPlayer = require('./video.js');
 var Socket = require('./socket.js');
 var Controls = require('./controls.js');
+var Overlays = require('./overlays/overlays.js');
 
 // attempts to build a socket connection url using
 // hostname constants. Defaults to window.location.hostname
@@ -20,9 +21,12 @@ function App(window, document) {
 
     this.localStorage = window.localStorage;
 
-    this.overlay = document.getElementById("overlay");
+    this.screenOutputOverlay = document.getElementById("overlay");
     this.out = document.getElementById("out");
     this.outTimeout = null;
+
+    // container for ui overlays (settings, etc.)
+    this.overlayPanels = new Overlays(document.getElementById('overlays-container'));
 
     this.opacityOverlayClassName = ".opacity-overlay";
     this.defaultInterfaceOpacity = 0.8;
@@ -32,7 +36,8 @@ function App(window, document) {
         document.getElementsByClassName('chat-container-view-elem'),
         document.getElementsByClassName('chat-container-input-elem'),
         document.getElementById('chat-container-username-input'),
-        document.getElementById('chat-container-overlay')
+        document.getElementById('chat-container-overlay'),
+        self.overlayPanels
     );
 
     this.socket = new Socket(getSocketAddr(window));
@@ -192,8 +197,8 @@ function App(window, document) {
     this.showOutput = function(text, timeout) {
         clearTimeout(this.outTimeout);
 
-        $(this.overlay).stop();
-        this.overlay.style.display = 'table';
+        $(this.screenOutputOverlay).stop();
+        this.screenOutputOverlay.style.display = 'table';
         this.out.innerHTML = text;
 
         if (!timeout) {
@@ -206,7 +211,7 @@ function App(window, document) {
     };
 
     this.hideOutput = function() {
-        $(self.overlay).fadeOut();
+        $(self.screenOutputOverlay).fadeOut();
     };
 
     this.socket.on('error', function(err) {

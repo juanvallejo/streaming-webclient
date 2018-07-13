@@ -21,7 +21,6 @@
 #overlay {
 	background: rgba(0,0,0,0.7);
 	z-index: 2;
-
 }
 #video-overlay {
 }
@@ -37,6 +36,26 @@
     position: absolute;
     z-index: 2;
 }
+
+#overlays-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    background: transparent;
+    display: none;
+}
+
+    #overlays-container .overlay {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: rgba(255,255,255,0.4);
+    }
 
 #controls-container {
     border-top: 1px solid rgba(255,255,255,0.02);
@@ -827,6 +846,7 @@ video, .api-player {
 <div id="overlay" class="overlay middle-container">
 	<div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
 </div>
+<div id="overlays-container"></div>
 <div id="banner-container" class="full-size-hor middle-container">
 	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
 </div>
