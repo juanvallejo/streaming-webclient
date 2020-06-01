@@ -1086,34 +1086,9 @@ function Controls(container, containerOverlay, controlsElemCollection, altContro
 
                     // disable re-queueing video for 10mins
                     item.disable(60 * 10 * 1000);
-
-                    if (item.kind === Cons.STREAM_KIND_YOUTUBE) {
-                        item.showAlert("Queueing, please wait...", 60 * 1000);
-
-                        RESTYoutubeCall("/api/youtube/transform/" + encodeYoutubeURIComponent(vidUrl), function(data, error) {
-                            if (error !== null || !data.items || !data.items.length) {
-                                // if we encounter an error attempting to convert url,
-                                // fetch and use youtube api player as fallback.
-                                item.showFailure("Defaulting to iFrame player...", 2000);
-                                self.emit("chatcommand", ["/queue add " + vidUrl]);
-                                return;
-                            }
-
-                            var infoUrl = data.items[0].url;
-                            if (!infoUrl || !infoUrl.length) {
-                                item.showFailure("Defaulting to iFrame player...", 5000);
-                                self.emit("chatcommand", ["/queue add " + vidUrl]);
-                                return;
-                            }
-
-                            item.showSuccess("Queued!", 2000);
-                            self.emit("chatcommand", ["/queue add " + infoUrl]);
-                        });
-
-                        return;
-                    }
-
+                    item.showAlert("Queueing, please wait...", 60 * 1000);
                     item.showSuccess("Queued!", 2000);
+
                     self.emit("chatcommand", ["/queue add " + vidUrl]);
                 }
             })(item, url));
@@ -3530,6 +3505,8 @@ function Video(videoElement, sTrackElement) {
         this.twitchPlayer = new Twitch.Player(Cons.DOM_TWITCH_CONTAINER, {
             width: '100%',
             height: '100%',
+            allowfullscreen: false,
+            channel: 'monstercat',
             controls: false,
             autoplay: false
         });
@@ -3537,7 +3514,7 @@ function Video(videoElement, sTrackElement) {
         this.twitchElem = document.getElementById(Cons.DOM_TWITCH_CONTAINER);
         this.twitchElem.style.display = 'none';
 
-        this.twitchPlayer.addEventListener(Twitch.Player.READY, self.callTwitchPlayerCallbacks)
+        this.twitchPlayer.addEventListener(Twitch.Player.READY, self.callTwitchPlayerCallbacks);
         this.twitchPlayer.addEventListener(Twitch.Player.PAUSE, function() {
             self.onTwitchPlayerStateChange(Twitch.Player.PAUSE);
         });

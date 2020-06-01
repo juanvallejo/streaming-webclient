@@ -431,6 +431,8 @@ function Video(videoElement, sTrackElement) {
         this.twitchPlayer = new Twitch.Player(Cons.DOM_TWITCH_CONTAINER, {
             width: '100%',
             height: '100%',
+            allowfullscreen: false,
+            channel: 'monstercat',
             controls: false,
             autoplay: false
         });
@@ -438,7 +440,7 @@ function Video(videoElement, sTrackElement) {
         this.twitchElem = document.getElementById(Cons.DOM_TWITCH_CONTAINER);
         this.twitchElem.style.display = 'none';
 
-        this.twitchPlayer.addEventListener(Twitch.Player.READY, self.callTwitchPlayerCallbacks)
+        this.twitchPlayer.addEventListener(Twitch.Player.READY, self.callTwitchPlayerCallbacks);
         this.twitchPlayer.addEventListener(Twitch.Player.PAUSE, function() {
             self.onTwitchPlayerStateChange(Twitch.Player.PAUSE);
         });
