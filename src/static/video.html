@@ -1,115 +1,121 @@
 <!doctype html>
 <html lang="en-US">
+
 <head>
-	<meta charset="utf-8" />
-	<title>FlickTrack</title>
+    <meta charset="utf-8" />
+    <title>FlickTrack</title>
     <link rel="icon" href="/src/static/favicon.ico" />
     <link rel="stylesheet" href="/src/static/reset.css" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"/>
-    <script src="/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <script src="/src/static/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+        crossorigin="anonymous"></script>
     <script src="/src/static/FlickTrack.js"></script>
-<style>
-@import url('https://fonts.googleapis.com/css?family=Questrial');
-.overlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	z-index: 1;
-}
-#overlay {
-	background: rgba(0,0,0,0.7);
-	z-index: 2;
-}
-#video-overlay {
-}
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Questrial');
 
-#out {
-	cursor: pointer;
-}
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
 
-.user-controls {
-    background: rgba(255,255,255,0.08);
-    border-radius: 0 0 0 1px;
-    color: rgba(255,255,255,0.65);
-    position: absolute;
-    z-index: 2;
-}
+        #overlay {
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2;
+        }
 
-#overlays-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 3;
-    background: transparent;
-    display: none;
-}
+        #out {
+            cursor: pointer;
+        }
 
-    #overlays-container .overlay {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        left: 0;
-        top: 0;
-        background: rgba(255,255,255,0.4);
-    }
+        .user-controls {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 0 0 0 1px;
+            color: rgba(255, 255, 255, 0.65);
+            position: absolute;
+            z-index: 2;
+        }
 
-#controls-container {
-    border-top: 1px solid rgba(255,255,255,0.02);
-    border-right: 1px solid rgba(255,255,255,0.05);
-    min-width: 420px;
-    width: 550px;
-    max-width: 50%;
-    height: 100px;
-    bottom: 0;
-    left: 0;
-    position: absolute;
-}
+        #overlays-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            background: transparent;
+            display: none;
+        }
 
-    #controls-container-panel {
-        border-top: 1px solid rgba(255,255,255,0.05);
-        border-right: 1px solid rgba(255,255,255,0.05);
-        width: 100%;
-        height: 500%;
-        max-height: 500px;
-        background: inherit;
-        position: absolute;
-        left: 0;
-        display: none;
-        overflow: hidden;
-        bottom: 100px;
-        z-index: 3;
-    }
-    #controls-container-panel-overlay {
-        display: none;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.9);
-        z-index: 3;
-        -moz-box-shadow:    inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
-        -webkit-box-shadow: inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
-        box-shadow:         inset 0 -40px 40px -40px rgba(255,255,255, 0.2);
-    }
+        #overlays-container .overlay {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        #controls-container {
+            border-top: 1px solid rgba(255, 255, 255, 0.02);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            min-width: 420px;
+            width: 550px;
+            max-width: 50%;
+            height: 100px;
+            bottom: 0;
+            left: 0;
+            position: absolute;
+        }
+
+        #controls-container-panel {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            width: 100%;
+            height: 500%;
+            max-height: 500px;
+            background: inherit;
+            position: absolute;
+            left: 0;
+            display: none;
+            overflow: hidden;
+            bottom: 100px;
+            z-index: 3;
+        }
+
+        #controls-container-panel-overlay {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 3;
+            -moz-box-shadow: inset 0 -40px 40px -40px rgba(255, 255, 255, 0.2);
+            -webkit-box-shadow: inset 0 -40px 40px -40px rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 -40px 40px -40px rgba(255, 255, 255, 0.2);
+        }
+
         #controls-container-panel-overlay-close {
             width: 10%;
             height: 10%;
             position: absolute;
             top: 0;
             right: 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            border-left: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 1;
         }
-            #controls-container-panel-overlay-close:active {
-                background: rgba(0,94,129,0.5);
-            }
-            #controls-container-panel-overlay-close .fa-wrapper {
-                width: 50px;
-            }
+
+        #controls-container-panel-overlay-close:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
+        #controls-container-panel-overlay-close .fa-wrapper {
+            width: 50px;
+        }
 
         #controls-container-panel-overlay-wrapper {
             width: 100%;
@@ -119,16 +125,17 @@
             z-index: 0;
             vertical-align: middle;
         }
-            #controls-container-panel-overlay-wrapper iframe {
-                display: table-cell;
-                padding-top: 17%;
-                width: 100%;
-                height: 60%;
-                vertical-align: middle;
-            }
-    #controls-container-panel-closearea {
 
-    }
+        #controls-container-panel-overlay-wrapper iframe {
+            display: table-cell;
+            padding-top: 17%;
+            width: 100%;
+            height: 60%;
+            vertical-align: middle;
+        }
+
+        #controls-container-panel-closearea {}
+
         .closearea {
             width: 100%;
             height: 15%;
@@ -137,85 +144,96 @@
             text-align: center;
             left: 0;
         }
-            .closearea-close {
-                width: 20%;
-                height: 100%;
-                text-align: center;
-                display: inline-block;
-            }
-                .closearea-close span {
-                    font-size: 1.5em;
-                    display: table;
-                    width: 100%;
-                    height: 100%;
-                }
-                    .closearea-close span::before {
-                        display: table-cell;
-                        vertical-align: middle;
-                    }
 
-    #controls-container-panel-top {
-        width: 100%;
-        height: 10%;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
+        .closearea-close {
+            width: 20%;
+            height: 100%;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .closearea-close span {
+            font-size: 1.5em;
+            display: table;
+            width: 100%;
+            height: 100%;
+        }
+
+        .closearea-close span::before {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        #controls-container-panel-top {
+            width: 100%;
+            height: 10%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
         #controls-container-panel-queuetoggle {
             width: 10%;
             height: 100%;
-            border-right: 1px solid rgba(255,255,255,0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
             text-align: center;
             position: relative;
         }
-            .controls-container-panel-elem-iconnotif {
-                position: absolute;
-                right: 0;
-                width: 50%;
-                height: 50%;
-                text-align: center;
-                display: inline-block;
-            }
-                .controls-container-panel-elem-iconnotif span {
-                    color: rgba(255,255,255,0.4);
-                    font-size: 0.7em;
-                    display: table-cell;
-                    text-align: center;
-                    line-height: 25px;
-                    vertical-align: middle;
-                }
-            #controls-container-panel-queuetoggle span {
-                text-align: center;
-                width: 100%;
-                height: 100%;
-                display: table;
-            }
-                #controls-container-panel-queuetoggle span:before {
-                    display: table-cell;
-                    vertical-align: middle;
-                }
-            #controls-container-panel-queuetoggle span:active {
-                background: rgba(0,94,129,0.5);
-            }
+
+        .controls-container-panel-elem-iconnotif {
+            position: absolute;
+            right: 0;
+            width: 50%;
+            height: 50%;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .controls-container-panel-elem-iconnotif span {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.7em;
+            display: table-cell;
+            text-align: center;
+            line-height: 25px;
+            vertical-align: middle;
+        }
+
+        #controls-container-panel-queuetoggle span {
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            display: table;
+        }
+
+        #controls-container-panel-queuetoggle span:before {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        #controls-container-panel-queuetoggle span:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
         #controls-container-panel-searchbar {
             text-align: center;
         }
-            #controls-container-panel-searchbar input {
-                background: transparent;
-                padding: 0;
-                margin: 0;
-                border: 0;
-                font: inherit;
-                color: inherit;
-                text-align: center;
-                width: 100%;
-                height: 100%;
-            }
 
-    #controls-container-panel-queue {
+        #controls-container-panel-searchbar input {
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            border: 0;
+            font: inherit;
+            color: inherit;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+        }
 
-    }
-    #controls-container-panel-results {
-        display: none;
-    }
+        #controls-container-panel-queue {}
+
+        #controls-container-panel-results {
+            display: none;
+        }
+
         .controls-container-panel-inner {
             width: 100%;
             height: 90%;
@@ -223,18 +241,20 @@
             padding-right: 15px;
             display: inline-block;
         }
+
         .controls-container-panel-inner span.message-wrapper {
-            color: rgba(255,255,255,0.3);
+            color: rgba(255, 255, 255, 0.3);
             width: 100%;
             height: 100%;
             text-align: center;
             display: table;
         }
-            .controls-container-panel-inner span.message-inner {
-                display: table-cell;
-                vertical-align: middle;
-                text-align: center;
-            }
+
+        .controls-container-panel-inner span.message-inner {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: center;
+        }
 
         #controls-container-panel-results .controls-container-panel-queueall {
             width: 100%;
@@ -242,121 +262,133 @@
             text-align: center;
             position: relative;
         }
-            .controls-container-panel-queueall:active {
-                background: rgba(0,94,129,0.5);
-            }
 
-        #controls-container-panel-results .controls-container-panel-result {
-
+        .controls-container-panel-queueall:active {
+            background: rgba(0, 94, 129, 0.5);
         }
-            #controls-container-panel-results .controls-container-panel-result:active {
-                background: transparent;
-            }
 
-            #controls-container-panel-results .controls-container-panel-result-info:active {
-                background: rgba(0,94,129,0.5);
-            }
-            #controls-container-panel-results .controls-container-panel-result-thumb:active {
-                opacity: 0.8;
-            }
+        #controls-container-panel-results .controls-container-panel-result {}
+
+        #controls-container-panel-results .controls-container-panel-result:active {
+            background: transparent;
+        }
+
+        #controls-container-panel-results .controls-container-panel-result-info:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
+        #controls-container-panel-results .controls-container-panel-result-thumb:active {
+            opacity: 0.8;
+        }
 
         .controls-container-panel-result {
             width: 100%;
             height: 20%;
             min-height: 50px;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
             cursor: default;
         }
-            .controls-container-panel-result:first-child {
-                border-top: 0;
-            }
-            .controls-container-panel-result:active {
-                background: rgba(0,94,129,0.5);
-            }
 
-            .controls-container-panel-result.disabled .controls-container-panel-result-thumb {
-                opacity: 0.3;
-            }
-            .controls-container-panel-result-thumb {
-                width: 20%;
-                min-width: 120px;
-                height: 100%;
-                border-right: 1px solid rgba(255,255,255,0.05);
-                position: absolute;
-                top: 0;
-                left: 0;
-                display: table;
-                text-align: center;
-                z-index: 2;
-            }
-                .controls-container-panel-result-thumb span {
-                    display: table-cell;
-                    vertical-align: middle;
-                    text-align: center;
-                    font-size: 2em;
-                }
-                    .controls-container-panel-result-thumb span img {
-                        width: 100%;
-                        max-height: 100%;
-                        vertical-align: middle;
-                    }
+        .controls-container-panel-result:first-child {
+            border-top: 0;
+        }
 
-            .controls-container-panel-result-info {
-                width: 80%;
-                height: 100%;
-                position: absolute;
-                top: 0;
-                right: 0;
-                display: table;
-                text-align: center;
-            }
-                .controls-container-panel-result.disabled .controls-container-panel-result-info span {
-                    opacity: 0.3;
-                }
-                .controls-container-panel-result-info span {
-                    display: table-cell;
-                    vertical-align: middle;
-                }
-                .controls-container-panel-result-info-alert {
-                    background: rgba(0,0,0,1.0);
-                    width: 97.5%;
-                    padding: 10px 0 10px 0;
-                    position: absolute;
-                    bottom: 0;
-                    right: 0;
-                    min-height: 10%;
-                }
-            .controls-container-panel-result-duration {
-                background: rgba(0, 0, 0,0.2);
-                width: 36%;
-                height: 17%;
-                font-size: 0.45em;
-                border-left: 1px solid rgba(255,255,255,0.1);
-                border-top: 1px solid rgba(255,255,255,0.1);
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                display: table;
-                text-align: center;
-            }
-            .controls-container-panel-result-duration span {
-                display: inline-block;
-                vertical-align: middle;
-                text-align: center;
-                height: 100%;
-                width: 100%;
-            }
+        .controls-container-panel-result:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
 
-    #controls-container-vol {
-        width: 15%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        right: 0;
-        cursor: default;
-        border-left: 1px solid rgba(255,255,255,0.05);
-    }
+        .controls-container-panel-result.disabled .controls-container-panel-result-thumb {
+            opacity: 0.3;
+        }
+
+        .controls-container-panel-result-thumb {
+            width: 20%;
+            min-width: 120px;
+            height: 100%;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: table;
+            text-align: center;
+            z-index: 2;
+        }
+
+        .controls-container-panel-result-thumb span {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .controls-container-panel-result-thumb span img {
+            width: 100%;
+            max-height: 100%;
+            vertical-align: middle;
+        }
+
+        .controls-container-panel-result-info {
+            width: 80%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: table;
+            text-align: center;
+        }
+
+        .controls-container-panel-result.disabled .controls-container-panel-result-info span {
+            opacity: 0.3;
+        }
+
+        .controls-container-panel-result-info span {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .controls-container-panel-result-info-alert {
+            background: rgba(0, 0, 0, 1.0);
+            width: 97.5%;
+            padding: 10px 0 10px 0;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            min-height: 10%;
+        }
+
+        .controls-container-panel-result-duration {
+            background: rgba(0, 0, 0, 0.2);
+            width: 36%;
+            height: 17%;
+            font-size: 0.45em;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            display: table;
+            text-align: center;
+        }
+
+        .controls-container-panel-result-duration span {
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        #controls-container-vol {
+            width: 15%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            cursor: default;
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
         #controls-container-vol-icon {
             width: 100%;
             height: 100%;
@@ -365,105 +397,117 @@
             left: 0;
             z-index: 1;
         }
-            #controls-container-vol-icon span {
-                display: table;
-                width: 100%;
-                text-align: center;
-                height: 100%;
-            }
-                #controls-container-vol-icon span::before {
-                    display: table-cell;
-                    vertical-align: middle;
-                }
+
+        #controls-container-vol-icon span {
+            display: table;
+            width: 100%;
+            text-align: center;
+            height: 100%;
+        }
+
+        #controls-container-vol-icon span::before {
+            display: table-cell;
+            vertical-align: middle;
+        }
 
         #controls-container-vol-slider {
             width: 100%;
             height: 72%;
-            border-top: 1.5px solid rgba(52,125,49,0.67);
+            border-top: 1.5px solid rgba(52, 125, 49, 0.67);
             background: rgba(70, 180, 75, 0.4);
             position: absolute;
             bottom: 0;
             left: 0;
             z-index: 2;
         }
-            #controls-container-vol-slider.controls-container-volume-elem.muted {
 
-            }
+        #controls-container-vol-slider.controls-container-volume-elem.muted {}
 
-            #controls-container-vol.muted #controls-container-vol-slider.controls-container-volume-elem {
-                background: rgba(165,170,174,0.1);
-                border-top: 1.5px solid rgba(165,170,174,0.1);
-            }
+        #controls-container-vol.muted #controls-container-vol-slider.controls-container-volume-elem {
+            background: rgba(165, 170, 174, 0.1);
+            border-top: 1.5px solid rgba(165, 170, 174, 0.1);
+        }
 
-    #controls-container-info {
-        width: 85%;
-        height: 40%;
-        text-align: center;
-        border-top: 1px solid rgba(255,255,255,0.01);
-        position: absolute;
-        bottom: 0;
-        left: 0;
-    }
+        #controls-container-info {
+            width: 85%;
+            height: 40%;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.01);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
         .controls-container-info-inner {
             text-align: center;
             display: table-cell;
-            border-left: 1px solid rgba(255,255,255,0.01);
+            border-left: 1px solid rgba(255, 255, 255, 0.01);
             height: 100%;
         }
-            .controls-container-info-inner:first-child {
-                border-left: 0;
-            }
+
+        .controls-container-info-inner:first-child {
+            border-left: 0;
+        }
+
         #controls-container-info-left {
             padding: 0 5px;
         }
+
         #controls-container-info-middle {
             overflow: hidden;
         }
 
-            #controls-container-info-middle span {
-                display: inline-block;
-            }
+        #controls-container-info-middle span {
+            display: inline-block;
+        }
 
         #controls-container-info-right {
             padding: 0 5px;
         }
-    #controls-container-seek {
-        width: 0;
-        left: 0;
-        position: absolute;
-        display: block;
-        height:1%;
-        background: rgba(255,255,255,1.0);
-        top: -1%;
-        z-index: 5;
-    }
-    #controls-container-seek-buttons {
-        width: 100%;
-        left: 0;
-        position: absolute;
-        display: none;
-        opacity: 0;
-        height: 100%;
-        top: 0;
-        background: rgba(0,0,0,0.8);
-        z-index: 7; /* ////-- */
-    }
+
+        #controls-container-seek {
+            width: 0;
+            left: 0;
+            position: absolute;
+            display: block;
+            height: 1%;
+            background: rgba(255, 255, 255, 1.0);
+            top: -1%;
+            z-index: 5;
+        }
+
+        #controls-container-seek-buttons {
+            width: 100%;
+            left: 0;
+            position: absolute;
+            display: none;
+            opacity: 0;
+            height: 100%;
+            top: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 7;
+            /* ////-- */
+        }
+
         .controls-container-seek-buttons-button {
             text-align: center;
             width: 50%;
             vertical-align: middle;
-            color: rgba(255,255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.5);
             display: table-cell;
             /*background: red;*/
         }
-            .controls-container-seek-buttons-button:first-child {
-                border: 0 solid rgba(255, 255, 255, 0.1);
-                border-width: 0 1px 0 0;
-                text-align: center;
-            }
-            .controls-container-seek-buttons-button:active {
-                background: rgba(0,94,129,0.5);
-            }
+
+        .controls-container-seek-buttons-button:first-child {
+            border: 0 solid rgba(255, 255, 255, 0.1);
+            border-width: 0 1px 0 0;
+            text-align: center;
+        }
+
+        .controls-container-seek-buttons-button:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
         #controls-container-seek-buttons-close {
             width: 8%;
             padding: 2% 0;
@@ -472,181 +516,208 @@
             display: block;
             top: 0;
             right: 0;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            border-left: 1px solid rgba(255,255,255,0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
         }
-            #controls-container-seek-buttons-close:active {
-                background: rgba(0,94,129,0.5);
-            }
-    #controls-container-seek-trigger {
-        width: 100%;
-        left: 0;
-        position: absolute;
-        display: table;
-        height: 18%;
-        top: -9%;
-        background: rgba(255,255,255,0.1);
-        opacity: 0;
-        z-index: 4;
-    }
+
+        #controls-container-seek-buttons-close:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
+        #controls-container-seek-trigger {
+            width: 100%;
+            left: 0;
+            position: absolute;
+            display: table;
+            height: 18%;
+            top: -9%;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            z-index: 4;
+        }
+
         #controls-container-seek-trigger-text {
             text-align: center;
             width: 100%;
             vertical-align: middle;
-            color: rgba(255,255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.5);
             display: none;
         }
 
-    .controls-container-controls {
-        width: 85%;
-        height: 60%;
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
+        .controls-container-controls {
+            width: 85%;
+            height: 60%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
         #controls-container-controls-search {
             width: 20%;
             border-left: 0;
         }
-        .controls-container-button, .controls-container-button-alt {
+
+        .controls-container-button,
+        .controls-container-button-alt {
             text-align: center;
-            border-left: 1px solid rgba(255,255,255,0.05);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
 
         }
-            .controls-container-button:active, .controls-container-active, .controls-container-button-alt:active, .button span:active {
-                background: rgba(0,94,129,0.5);
-            }
-            .controls-container-button span, .controls-container-button-alt span {
-                display: inline-block;
-            }
 
-.chat-container-elem {
-    min-width: 300px;
-    width: 400px;
-    max-width: 55%;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    border-left: 1px solid rgba(255,255,255,0.05);
-    top: 0;
-    right: 0;
-}
-#chat-container.chat-container-minimized {
-    min-height: 5%;
-    height: 100px;
-    max-height: 100px;
-    position: absolute;
-}
-    #chat-container.chat-container-minimized #chat-container-input {
-        height: 40%;
-    }
-    #chat-container.chat-container-minimized #chat-container-view {
-        height: 60%;
-        top: 0;
-        border-bottom: 0;
-    }
-    #chat-container.chat-container-minimized #chat-container-user-view {
-        display: none;
-    }
+        .controls-container-button:active,
+        .controls-container-active,
+        .controls-container-button-alt:active,
+        .button span:active {
+            background: rgba(0, 94, 129, 0.5);
+        }
 
-#chat-container {
-    min-height: 50%;
-    height: 600px;
-    max-height: 600px;
-}
-	#chat-container-input {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		width: 100%;
-		padding: 0;
-		height: 7%;
-        text-align: left;
-	}
-		#chat-container-input input {
-			border-width: 1px 0 0 0;
-			border-color: rgba(255,255,255,0.15);
-			/*position: absolute;*/
-			display: inline-block;
+        .controls-container-button span,
+        .controls-container-button-alt span {
+            display: inline-block;
+        }
+
+        .chat-container-elem {
+            min-width: 300px;
+            width: 400px;
+            max-width: 55%;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            top: 0;
+            right: 0;
+        }
+
+        #chat-container.chat-container-minimized {
+            min-height: 5%;
+            height: 100px;
+            max-height: 100px;
+            position: absolute;
+        }
+
+        #chat-container.chat-container-minimized #chat-container-input {
+            height: 40%;
+        }
+
+        #chat-container.chat-container-minimized #chat-container-view {
+            height: 60%;
+            top: 0;
+            border-bottom: 0;
+        }
+
+        #chat-container.chat-container-minimized #chat-container-user-view {
+            display: none;
+        }
+
+        #chat-container {
+            min-height: 50%;
+            height: 600px;
+            max-height: 600px;
+        }
+
+        #chat-container-input {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 0;
+            height: 7%;
+            text-align: left;
+        }
+
+        #chat-container-input input {
+            border-width: 1px 0 0 0;
+            border-color: rgba(255, 255, 255, 0.15);
+            /*position: absolute;*/
+            display: inline-block;
             padding: 0 2%;
-			left: 0;
-			margin: 0;
-			min-width: 70%;
+            left: 0;
+            margin: 0;
+            min-width: 70%;
             max-width: 100%;
-			height: 100%;
+            height: 100%;
             float: left;
-		}
+        }
+
         #chat-container-input .button {
             position: relative;
             display: inline-block;
             min-width: 50px;
             height: 99%;
             border-width: 1px 0 0 1px;
-            border-color: rgba(255,255,255,0.1);
+            border-color: rgba(255, 255, 255, 0.1);
             border-style: solid;
             padding: 0;
             margin: 0;
             text-align: center;
             float: left;
         }
-            #chat-container-input .button .controls-container-panel-elem-iconnotif {
-                width: 50%;
-                height: 10%;
-                text-align: right;
-                position: absolute;
-                padding-right: 5px;
-                display: block;
-                right: 0;
-                top: -2px;
-            }
-                #chat-container-input .button .controls-container-panel-elem-iconnotif span {
-                    width: 100%;
-                    height: 100%;
-                    display: inline-block;
-                    padding-right: 10px;
-                    text-align: right;
-                    vertical-align: top;
-                }
-    #chat-container .button .span-wrapper {
-        width: 100%;
-        height: 100%;
-        display: table;
-        text-align: center;
-    }
+
+        #chat-container-input .button .controls-container-panel-elem-iconnotif {
+            width: 50%;
+            height: 10%;
+            text-align: right;
+            position: absolute;
+            padding-right: 5px;
+            display: block;
+            right: 0;
+            top: -2px;
+        }
+
+        #chat-container-input .button .controls-container-panel-elem-iconnotif span {
+            width: 100%;
+            height: 100%;
+            display: inline-block;
+            padding-right: 10px;
+            text-align: right;
+            vertical-align: top;
+        }
+
+        #chat-container .button .span-wrapper {
+            width: 100%;
+            height: 100%;
+            display: table;
+            text-align: center;
+        }
+
         #chat-container .button span {
             vertical-align: middle;
             display: table-cell;
         }
 
-    #chat-container-user-view {
-        opacity: 0.1;
-        display: none;
-        left: 0;
-        width: 103%;
-        overflow-x: hidden;
-        overflow-y: scroll;
-        height: 40%;
-        position: relative;
-        word-wrap: break-word;
-        -moz-box-shadow:    inset 0 -40px 40px -40px rgba(0,0,0,0.75);
-        -webkit-box-shadow: inset 0 -40px 40px -40px rgba(0,0,0,0.75);
-        box-shadow:         inset 0 -40px 40px -40px rgba(0,0,0,0.75);
-    }
+        #chat-container-user-view {
+            opacity: 0.1;
+            display: none;
+            left: 0;
+            width: 103%;
+            overflow-x: hidden;
+            overflow-y: scroll;
+            height: 40%;
+            position: relative;
+            word-wrap: break-word;
+            -moz-box-shadow: inset 0 -40px 40px -40px rgba(0, 0, 0, 0.75);
+            -webkit-box-shadow: inset 0 -40px 40px -40px rgba(0, 0, 0, 0.75);
+            box-shadow: inset 0 -40px 40px -40px rgba(0, 0, 0, 0.75);
+        }
+
         #chat-container-user-view .chat-container-view-message {
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             min-height: 10px;
             position: relative;
         }
-            #chat-container-user-view .chat-container-view-message-status {
-                width: 50%;
-                position: absolute;
-                top: 0;
-                right: 0;
-                height: 100%;
-                text-align: right;
-                padding-right: 10px;
-            }
-                #chat-container-user-view .chat-container-view-message-status .fa-wrapper span {
-                    padding-right: 8px;
-                }
+
+        #chat-container-user-view .chat-container-view-message-status {
+            width: 50%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        #chat-container-user-view .chat-container-view-message-status .fa-wrapper span {
+            padding-right: 8px;
+        }
+
         #chat-container-user-view .chat-container-view-button-wrapper {
             width: 50%;
             height: 100%;
@@ -654,6 +725,7 @@
             top: 0;
             position: absolute;
         }
+
         #chat-container-user-view .chat-container-view-button {
             text-align: center;
             float: right;
@@ -662,321 +734,367 @@
             padding: 0;
             display: inline-block;
         }
-            #chat-container-user-view .chat-container-view-button.active {
-            }
-            #chat-container-user-view #chat-container-view-settings-btn {
-            }
-        #chat-container-user-view .chat-container-view-message-text {
-        }
+
+        #chat-container-user-view .chat-container-view-button.active {}
+
+        #chat-container-user-view #chat-container-view-settings-btn {}
+
+        #chat-container-user-view .chat-container-view-message-text {}
+
         #chat-container-user-view.chat-container-display-user-view {
             display: block;
             top: 0;
         }
+
         #chat-container-user-view .chat-container-view-message-center {
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             text-align: center;
         }
-    #chat-container-user-view .chat-container-view-message-middle-wrapper {
-        border-bottom: 0;
-        text-align: center;
-        display: table;
-        width: 95%;
-        height: 100%;
-    }
+
+        #chat-container-user-view .chat-container-view-message-middle-wrapper {
+            border-bottom: 0;
+            text-align: center;
+            display: table;
+            width: 95%;
+            height: 100%;
+        }
+
         #chat-container-user-view .chat-container-view-message-middle {
             text-align: center;
             display: table-cell;
             vertical-align: middle;
             opacity: 0.7;
         }
-	#chat-container-view {
-		opacity: 0.1;
-		position: absolute;
-		top: 0;
-		overflow-y: scroll;
-		overflow-x: hidden;
-		left: 0;
-		width: 103%;
-		height: 93%;
-		word-wrap: break-word;
-	}
+
+        #chat-container-view {
+            opacity: 0.1;
+            position: absolute;
+            top: 0;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            left: 0;
+            width: 103%;
+            height: 93%;
+            word-wrap: break-word;
+        }
+
         #chat-container-view.chat-container-display-user-view {
             top: 40%;
             height: 53%;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-		.chat-container-view-message {
-			display: block;
-			padding: 10px;
-			border-bottom: 1px solid rgba(255,255,255,0.1);
-			word-wrap: break-word;
-		}
-			.chat-container-view-message-user {
+        .chat-container-view-message {
+            display: block;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            word-wrap: break-word;
+        }
 
-			}
-			.chat-container-view-message-text {
-				word-wrap: break-word;
-			}
-	#chat-container-overlay {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-        top: 0;
-        left: 0;
-		background: rgba(255,255,255,0.1);
-	}
-#banner-container {
-	background: rgba(0,0,0,0.6);
-	border-bottom: 1px solid rgba(0,0,0,0.6);
-	display: none;
-	font-size: 0.9em;
-	height: 50px;
-	position: absolute;
-	z-index: 3;
-}
+        .chat-container-view-message-user {}
+
+        .chat-container-view-message-text {
+            word-wrap: break-word;
+        }
+
+        #chat-container-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #banner-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+            display: none;
+            font-size: 0.9em;
+            height: 50px;
+            position: absolute;
+            z-index: 3;
+        }
 
 
-#soundcloud-video.api-player {
-    background: black url(/src/static/sc_bg.jpg) no-repeat center center fixed;
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;
+        #soundcloud-video.api-player {
+            background: black url(/src/static/sc_bg.jpg) no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
 
-    display: none;
-}
+            display: none;
+        }
 
-.chat-container-view-message-image {
-	max-width: 100%;
-}
-.chat-container-input {
-			background: transparent;
-			color: inherit;
-			font: inherit;
-			top: 0;
-}
-.noselect {
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-    -khtml-user-select: none; /* Konqueror HTML */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* Internet Explorer/Edge */
-    user-select: none; /* Non-prefixed version, currently
+        .chat-container-view-message-image {
+            max-width: 100%;
+        }
+
+        .chat-container-input {
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            top: 0;
+        }
+
+        .noselect {
+            -webkit-touch-callout: none;
+            /* iOS Safari */
+            -webkit-user-select: none;
+            /* Safari */
+            -khtml-user-select: none;
+            /* Konqueror HTML */
+            -moz-user-select: none;
+            /* Firefox */
+            -ms-user-select: none;
+            /* Internet Explorer/Edge */
+            user-select: none;
+            /* Non-prefixed version, currently
                           supported by Chrome and Opera */
-}
-.active {
-    background: rgba(0,94,129,0.5);
-}
-.no-border {
-	border: 0;
-}
-.middle-container {
-	display: table;
-}
-.opacity-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgb(0,0,0);
-    z-index: -1;
-}
-.full-size {
-	width: 100%;
-	height: 100%;
-}
-.full-size-hor {
-	width: 100%;
-}
-.fa-wrapper {
-    min-width: 40px;
-    height: 100%;
-    display: inline-table;
-    text-align: center;
-}
-    .fa-wrapper span {
-        display: table-cell;
-        vertical-align: middle;
-    }
-.middle {
-	display: table-cell;
-	vertical-align: middle;
-}
-.text-hl-name {
-	/*color: rgba(205,55,0, 0.8)*/
-	color: rgba(125,169,193, 0.8)
-}
-.block {
-	display: block;
-}
-.text-center {
-	text-align: center;
-}
-.text-white {
-	color: rgba(255,255,255, 0.8);
-}
-.hidden {
-    display: none;
-}
-body, html {
-    height: 100%;
-}
-body {
-	font: 300 16px 'Questrial';
-	background: black;
-    overflow: hidden;
-	z-index: 999;
-}
-video, .api-player {
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	position: absolute;
-}
+        }
 
-::-webkit-scrollbar { 
-    display: none; 
-}
-</style>
+        .active {
+            background: rgba(0, 94, 129, 0.5);
+        }
+
+        .no-border {
+            border: 0;
+        }
+
+        .middle-container {
+            display: table;
+        }
+
+        .opacity-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgb(0, 0, 0);
+            z-index: -1;
+        }
+
+        .full-size {
+            width: 100%;
+            height: 100%;
+        }
+
+        .full-size-hor {
+            width: 100%;
+        }
+
+        .fa-wrapper {
+            min-width: 40px;
+            height: 100%;
+            display: inline-table;
+            text-align: center;
+        }
+
+        .fa-wrapper span {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .middle {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .text-hl-name {
+            /*color: rgba(205,55,0, 0.8)*/
+            color: rgba(125, 169, 193, 0.8)
+        }
+
+        .block {
+            display: block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-white {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        body,
+        html {
+            height: 100%;
+        }
+
+        body {
+            font: 300 16px 'Questrial';
+            background: black;
+            overflow: hidden;
+            z-index: 999;
+        }
+
+        video,
+        .api-player {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
 </head>
+
 <body class="noselect">
-<div id="overlay" class="overlay middle-container">
-	<div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
-</div>
-<div id="overlays-container"></div>
-<div id="banner-container" class="full-size-hor middle-container">
-	<div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
-</div>
-<div id="controls-container" class="user-controls noselect">
-    <div class="opacity-overlay"></div>
-    <div id="controls-container-seek" class="controls-container-seek-elem"></div>
-    <div id="controls-container-seek-trigger" class="controls-container-seek-elem">
-        <span id="controls-container-seek-trigger-text"></span>
+    <div id="overlay" class="overlay middle-container">
+        <div class="full-size middle text-center text-white" id="out">Loading, please wait...</div>
     </div>
-    <div id="controls-container-seek-buttons" class="controls-container-seek-elem">
-        <div id="controls-container-seek-buttons-back" class="controls-container-seek-buttons-button" title="rewind stream by 30s; click + hold for fast rewind"><span class="fa fa-backward"></span></div>
-        <div id="controls-container-seek-buttons-forward" class="controls-container-seek-buttons-button" title="skip stream ahead by 30s; click + hold for fast forward"><span class="fa fa-forward"></span></div>
-        <div id="controls-container-seek-buttons-close"><span class="fa fa-close"></span></div>
+    <div id="overlays-container"></div>
+    <div id="banner-container" class="full-size-hor middle-container">
+        <div class="full-size middle text-center text-white" id="banner">Loading, please wait...</div>
     </div>
-    <div id="controls-container-vol">
-        <div id="controls-container-vol-icon">
-            <span class="fa fa-volume-up middle-container controls-container-volume-elem"></span>
+    <div id="controls-container" class="user-controls noselect">
+        <div class="opacity-overlay"></div>
+        <div id="controls-container-seek" class="controls-container-seek-elem"></div>
+        <div id="controls-container-seek-trigger" class="controls-container-seek-elem">
+            <span id="controls-container-seek-trigger-text"></span>
         </div>
-        <div id="controls-container-vol-slider" class="controls-container-volume-elem noselect"></div>
-    </div>
-    <div class="controls-container-controls middle-container noselect">
-        <div id="controls-container-controls-search" class="controls-container-button middle">
-            <span class="fa fa-search" title="open queue / search panel"></span>
+        <div id="controls-container-seek-buttons" class="controls-container-seek-elem">
+            <div id="controls-container-seek-buttons-back" class="controls-container-seek-buttons-button"
+                title="rewind stream by 30s; click + hold for fast rewind"><span class="fa fa-backward"></span></div>
+            <div id="controls-container-seek-buttons-forward" class="controls-container-seek-buttons-button"
+                title="skip stream ahead by 30s; click + hold for fast forward"><span class="fa fa-forward"></span>
+            </div>
+            <div id="controls-container-seek-buttons-close"><span class="fa fa-close"></span></div>
         </div>
-        <div class="controls-container-button middle">
-            <span class="fa fa-undo" title="reset stream for everyone"></span>
+        <div id="controls-container-vol">
+            <div id="controls-container-vol-icon">
+                <span class="fa fa-volume-up middle-container controls-container-volume-elem"></span>
+            </div>
+            <div id="controls-container-vol-slider" class="controls-container-volume-elem noselect"></div>
         </div>
-        <div class="controls-container-button middle">
-            <span class="fa fa-play controls-container-button-playpause" title="play stream for everyone"></span>
-            <span class="fa fa-pause controls-container-button-playpause" title="pause stream for everyone"></span>
+        <div class="controls-container-controls middle-container noselect">
+            <div id="controls-container-controls-search" class="controls-container-button middle">
+                <span class="fa fa-search" title="open queue / search panel"></span>
+            </div>
+            <div class="controls-container-button middle">
+                <span class="fa fa-undo" title="reset stream for everyone"></span>
+            </div>
+            <div class="controls-container-button middle">
+                <span class="fa fa-play controls-container-button-playpause" title="play stream for everyone"></span>
+                <span class="fa fa-pause controls-container-button-playpause" title="pause stream for everyone"></span>
+            </div>
+            <div class="controls-container-button middle">
+                <span class="fa fa-step-forward" title="skip current stream for everyone"></span>
+            </div>
         </div>
-        <div class="controls-container-button middle">
-            <span class="fa fa-step-forward" title="skip current stream for everyone"></span>
+        <div class="controls-container-controls middle-container noselect">
+            <div class="controls-container-button-alt middle">
+                <span class="fa fa-times" title="back to queue"></span>
+            </div>
         </div>
-    </div>
-    <div class="controls-container-controls middle-container noselect">
-        <div class="controls-container-button-alt middle">
-            <span class="fa fa-times" title="back to queue"></span>
+        <div class="controls-container-controls middle-container noselect">
+            <div class="controls-container-button-alt middle">
+                <span class="fa fa-arrow-up" title="move to top of queue"></span>
+            </div>
+            <div class="controls-container-button-alt middle">
+                <span class="fa fa-trash-o" title="remove item from queue"></span>
+            </div>
         </div>
-    </div>
-    <div class="controls-container-controls middle-container noselect">
-        <div class="controls-container-button-alt middle">
-            <span class="fa fa-arrow-up" title="move to top of queue"></span>
+        <div id="controls-container-info" class="middle-container noselect">
+            <div id="controls-container-info-left" class="controls-container-info-inner middle">
+                00:00
+            </div>
+            <div id="controls-container-info-middle" class="controls-container-info-inner middle">
+                No media playing
+            </div>
+            <div id="controls-container-info-right" class="controls-container-info-inner middle">
+                00:00
+            </div>
         </div>
-        <div class="controls-container-button-alt middle">
-            <span class="fa fa-trash-o" title="remove item from queue"></span>
-        </div>
-    </div>
-    <div id="controls-container-info" class="middle-container noselect">
-        <div id="controls-container-info-left" class="controls-container-info-inner middle">
-            00:00
-        </div>
-        <div id="controls-container-info-middle" class="controls-container-info-inner middle">
-            No media playing
-        </div>
-        <div id="controls-container-info-right" class="controls-container-info-inner middle">
-            00:00
-        </div>
-    </div>
-    <div id="controls-container-panel">
-        <div id="controls-container-panel-overlay">
-            <div id="controls-container-panel-overlay-close">
-                <span class="fa-wrapper">
-                    <span class="fa fa-close"></span>
+        <div id="controls-container-panel">
+            <div id="controls-container-panel-overlay">
+                <div id="controls-container-panel-overlay-close">
+                    <span class="fa-wrapper">
+                        <span class="fa fa-close"></span>
+                    </span>
+                </div>
+                <div id="controls-container-panel-overlay-wrapper"></div>
+            </div>
+            <div class="opacity-overlay"></div>
+            <div id="controls-container-panel-top" class="middle-container">
+                <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle"
+                    title="toggle between your queue and room queue">
+                    <div class="controls-container-panel-elem-iconnotif"><span
+                            class="controls-container-panel-elem">0</span></div>
+                    <span class="fa fa-clone middle-container"></span>
+                </div>
+                <div id="controls-container-panel-searchbar" class="middle">
+                    <input type="text" placeholder="search videos..." class="controls-container-panel-elem" />
+                </div>
+            </div>
+            <div id="controls-container-panel-results"
+                class="controls-container-panel-inner controls-container-panel-elem"></div>
+            <div id="controls-container-panel-queue"
+                class="controls-container-panel-inner controls-container-panel-elem">
+                <span class="message-wrapper">
+                    <span class="message-inner">Loading queue...</span>
                 </span>
             </div>
-            <div id="controls-container-panel-overlay-wrapper"></div>
         </div>
+    </div>
+    <div id="chat-container" class="user-controls chat-container-elem">
         <div class="opacity-overlay"></div>
-        <div id="controls-container-panel-top" class="middle-container">
-            <div id="controls-container-panel-queuetoggle" class="controls-container-panel-elem middle" title="toggle between your queue and room queue">
-                <div class="controls-container-panel-elem-iconnotif"><span class="controls-container-panel-elem">0</span></div>
-                <span class="fa fa-clone middle-container"></span>
+        <div id="chat-container-user-view" class="chat-container-view-elem"></div>
+        <div id="chat-container-view" class="chat-container-view-elem"></div>
+        <div id="chat-container-input">
+            <input type="text" class="chat-container-input chat-container-input-elem" />
+            <div class="button chat-container-input-elem">
+                <div class="span-wrapper">
+                    <span class="fa fa-users" title="list users in room"></span>
+                    <div class="controls-container-panel-elem-iconnotif"><span
+                            class="controls-container-panel-elem">1</span></div>
+                </div>
             </div>
-            <div id="controls-container-panel-searchbar" class="middle">
-                <input type="text" placeholder="search videos..." class="controls-container-panel-elem" />
-            </div>
-        </div>
-        <div id="controls-container-panel-results" class="controls-container-panel-inner controls-container-panel-elem"></div>
-        <div id="controls-container-panel-queue" class="controls-container-panel-inner controls-container-panel-elem">
-            <span class="message-wrapper">
-                <span class="message-inner">Loading queue...</span>
-            </span>
-        </div>
-    </div>
-</div>
-<div id="chat-container" class="user-controls chat-container-elem">
-    <div class="opacity-overlay"></div>
-    <div id="chat-container-user-view" class="chat-container-view-elem"></div>
-    <div id="chat-container-view" class="chat-container-view-elem"></div>
-    <div id="chat-container-input">
-        <input type="text" class="chat-container-input chat-container-input-elem" />
-        <div class="button chat-container-input-elem">
-            <div class="span-wrapper">
-                <span class="fa fa-users" title="list users in room"></span>
-                <div class="controls-container-panel-elem-iconnotif"><span class="controls-container-panel-elem">1</span></div>
+            <div class="button chat-container-input-elem">
+                <div class="span-wrapper">
+                    <span class="fa fa-minus" title="minimize chat window"></span>
+                </div>
             </div>
         </div>
-        <div class="button chat-container-input-elem">
-            <div class="span-wrapper">
-                <span class="fa fa-minus" title="minimize chat window"></span>
+        <div id="chat-container-overlay">
+            <div class="full-size">
+                <input class="full-size middle text-center chat-container-input no-border"
+                    id="chat-container-username-input" type="text" placeholder="Please enter a username to continue." />
             </div>
         </div>
     </div>
-    <div id="chat-container-overlay">
-        <div class="full-size">
-            <input class="full-size middle text-center chat-container-input no-border" id="chat-container-username-input" type="text" placeholder="Please enter a username to continue."/>
-        </div>
-    </div>
-</div>
-<div id="video-overlay" class="overlay"></div>
-<div id="yt-video" class="api-player"></div>
-<div id="twitch-video" class="api-player"></div>
-<div id="soundcloud-video" class="api-player"></div>
-<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>
-<script src="http://player.twitch.tv/js/embed/v1.js"></script>
-<script>
-var app = new App(window, document);
-app.init();
+    <div id="video-overlay" class="overlay"></div>
+    <div id="yt-video" class="api-player"></div>
+    <div id="twitch-video" class="api-player"></div>
+    <div id="soundcloud-video" class="api-player"></div>
+    <script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>
+    <script src="https://player.twitch.tv/js/embed/v1.js"></script>
+    <script>
+        var app = new App(window, document);
+        app.init();
 
-var ytApiScript = document.createElement('script');
-var referenceTag = document.getElementsByTagName('script')[0];
-ytApiScript.src = "https://www.youtube.com/iframe_api";
-referenceTag.parentNode.insertBefore(ytApiScript, referenceTag);
+        var ytApiScript = document.createElement('script');
+        var referenceTag = document.getElementsByTagName('script')[0];
+        ytApiScript.src = "https://www.youtube.com/iframe_api";
+        referenceTag.parentNode.insertBefore(ytApiScript, referenceTag);
 
 
-// initialize youtube player as soon as it is ready.
-window.onYouTubeIframeAPIReady = function(){
-    app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
-};
-</script>
+        // initialize youtube player as soon as it is ready.
+        window.onYouTubeIframeAPIReady = function () {
+            app.getVideo().initYtPlayer(YT, document.getElementById("yt-video"));
+        };
+    </script>
 </body>
+
 </html>
